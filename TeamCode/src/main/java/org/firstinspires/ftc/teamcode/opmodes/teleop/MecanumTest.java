@@ -7,13 +7,18 @@ import com.pedropathing.geometry.Pose;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
+import org.firstinspires.ftc.teamcode.subsystem.Intake;
 import org.firstinspires.ftc.teamcode.subsystem.Shooter;
+import org.firstinspires.ftc.teamcode.subsystem.Transfer;
+import org.firstinspires.ftc.teamcode.subsystem.Webcam;
 
+import dev.nextftc.core.commands.Command;
 import dev.nextftc.core.components.BindingsComponent;
 import dev.nextftc.core.components.SubsystemComponent;
 import dev.nextftc.ftc.Gamepads;
 import dev.nextftc.ftc.NextFTCOpMode;
 import dev.nextftc.ftc.components.BulkReadComponent;
+import dev.nextftc.hardware.driving.MecanumDriverControlled;
 import dev.nextftc.hardware.impl.MotorEx;
 
 @TeleOp(name = "MecanumTest")
@@ -22,7 +27,7 @@ public class MecanumTest extends NextFTCOpMode {
         addComponents(
                 BulkReadComponent.INSTANCE,
                 BindingsComponent.INSTANCE,
-                new SubsystemComponent(Shooter.INSTANCE)
+                new SubsystemComponent(Shooter.INSTANCE, Intake.INSTANCE, Transfer.INSTANCE, Webcam.INSTANCE)
         );
     }
 
@@ -38,21 +43,23 @@ public class MecanumTest extends NextFTCOpMode {
     private boolean slowMode = false;
     private double slowModeMultiplier = 0.25;
 
-    private Follower follower;
-    public static Pose startingPose;
-
     @Override
     public void onInit() {
-        follower = Constants.createFollower(hardwareMap);
-        follower.setStartingPose(startingPose == null ? new Pose() : startingPose);
-        follower.update();
-
         telemetryM = PanelsTelemetry.INSTANCE.getTelemetry();
     }
 
     @Override
     public void onStartButtonPressed() {
-        follower.startTeleOpDrive();
+        Command driverControlled = new MecanumDriverControlled(
+            frontLeftMotor,
+                frontRightMotor,
+                backLeftMotor,
+                backRightMotor,
+                Gamepads.gamepad1().leftStickY().negate(),
+                Gamepads.gamepad1().leftStickX(),
+                Gamepads.gamepad1().rightStickX()
+        );
+        driverControlled.schedule();
 
         Gamepads.gamepad1().triangle().toggleOnBecomesTrue()
                 .whenBecomesTrue(() -> slowMode = true)
@@ -69,30 +76,25 @@ public class MecanumTest extends NextFTCOpMode {
         Gamepads.gamepad1().rightTrigger().greaterThan(0.2)
                 .whenBecomesTrue(() -> Shooter.INSTANCE.spinUp.schedule())
                 .whenBecomesFalse(() -> Shooter.INSTANCE.spinDown.schedule());
+
+        Gamepads.gamepad1().leftTrigger().greaterThan(0.2)
+                .whenBecomesTrue(() -> Intake.INSTANCE.spinUp.schedule())
+                .whenBecomesFalse(() -> Intake.INSTANCE.spinDown.schedule());
+
+        Gamepads.gamepad1().leftBumper()
+                .whenBecomesTrue(() -> Intake.INSTANCE.spinUpReverse.schedule())
+                .whenBecomesFalse(() -> Intake.INSTANCE.spinDown.schedule());
+
+        Gamepads.gamepad1().cross()
+                .whenBecomesTrue(() -> Transfer.INSTANCE.spinUp.schedule())
+                .whenBecomesFalse(() -> Transfer.INSTANCE.spinDown.schedule());
     }
 
     @Override
     public void onUpdate() {
-        follower.update();
         telemetryM.update(telemetry);
-
-        if (!slowMode) follower.setTeleOpDrive(
-                -gamepad1.left_stick_y,
-                -gamepad1.left_stick_x,
-                -gamepad1.right_stick_x,
-                true // Robot Centric
-        );
-        else follower.setTeleOpDrive(
-                -gamepad1.left_stick_y * slowModeMultiplier,
-                -gamepad1.left_stick_x * slowModeMultiplier,
-                -gamepad1.right_stick_x * slowModeMultiplier,
-                true // Robot Centric
-        );
 
         telemetryM.addData("slowMode toggle", slowMode);
         telemetryM.addData("slowMode multiplier", slowModeMultiplier);
-
-        telemetryM.debug("position", follower.getPose());
-        telemetryM.debug("velocity", follower.getVelocity());
     }
 }

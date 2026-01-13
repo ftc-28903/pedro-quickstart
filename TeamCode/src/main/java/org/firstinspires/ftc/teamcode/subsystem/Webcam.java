@@ -20,6 +20,60 @@ public class Webcam implements Subsystem {
     private AprilTagProcessor aprilTagProcessor;
     private VisionPortal visionPortal;
     private List<AprilTagDetection> detectedTags = new ArrayList<>();
+    public DistanceComponents lastDistanceComponent = null;
+
+    private static final double CAMERA_TILT_DEGREES = 15.0; // Camera tilted upwards
+
+    /**
+     * Calculates the horizontal distance to an AprilTag, excluding height difference.
+     * Takes into account the camera's upward tilt.
+     *
+     * @param detection The AprilTag detection
+     * @return Horizontal distance in cm, or -1 if detection is null
+     */
+    public double getHorizontalDistance(AprilTagDetection detection) {
+        if (detection == null) return -1;
+
+        // Get the range (direct distance) and elevation angle from the detection
+        double range = detection.ftcPose.range; // in cm
+        double elevationAngle = detection.ftcPose.elevation; // in degrees
+
+        // Adjust elevation angle for camera tilt
+        double actualElevationAngle = elevationAngle + CAMERA_TILT_DEGREES;
+
+        // Calculate horizontal distance using cosine
+        // horizontalDistance = range * cos(actualElevation)
+        double horizontalDistance = range * Math.cos(Math.toRadians(actualElevationAngle));
+
+        return horizontalDistance;
+    }
+
+    /**
+     * Alternative method: Gets the horizontal distance and height difference separately
+     */
+    public DistanceComponents getDistanceComponents(AprilTagDetection detection) {
+        if (detection == null) return null;
+
+        double range = detection.ftcPose.range;
+        double elevationAngle = detection.ftcPose.elevation;
+        double actualElevationAngle = elevationAngle + CAMERA_TILT_DEGREES;
+
+        double horizontalDistance = range * Math.cos(Math.toRadians(actualElevationAngle));
+        double heightDifference = range * Math.sin(Math.toRadians(actualElevationAngle));
+
+        return new DistanceComponents(horizontalDistance-30, heightDifference);
+    }
+
+    // Helper class to return both components
+    public static class DistanceComponents {
+        public final double horizontal; // cm
+        public final double vertical;   // cm
+
+        public DistanceComponents(double horizontal, double vertical) {
+            this.horizontal = horizontal;
+            this.vertical = vertical;
+        }
+    }
 
     @Override
     public void initialize() {
@@ -44,6 +98,10 @@ public class Webcam implements Subsystem {
         detectedTags = aprilTagProcessor.getDetections();
 
         AprilTagDetection id20 = getTagBySpecificId(20);
+        if(id20 != null && id20.metadata != null) {
+            lastDistanceComponent = getDistanceComponents(id20);
+        }
+
         displayDetectionTelemetry(id20);
     }
 
@@ -59,6 +117,7 @@ public class Webcam implements Subsystem {
             ActiveOpMode.telemetry().addLine(String.format(Locale.ENGLISH, "XYZ %6.1f %6.1f %6.1f (cm)", detectedId.ftcPose.x, detectedId.ftcPose.y, detectedId.ftcPose.z));
             ActiveOpMode.telemetry().addLine(String.format(Locale.ENGLISH, "PRY %6.1f %6.1f %6.1f (deg)", detectedId.ftcPose.pitch, detectedId.ftcPose.roll, detectedId.ftcPose.yaw));
             ActiveOpMode.telemetry().addLine(String.format(Locale.ENGLISH, "RBE %6.1f %6.1f %6.1f (cm, deg, deg)", detectedId.ftcPose.range, detectedId.ftcPose.bearing, detectedId.ftcPose.elevation));
+            ActiveOpMode.telemetry().addLine(String.format(Locale.ENGLISH, "Horizontal: %6.1f, vertical: %6.1f", lastDistanceComponent.horizontal, lastDistanceComponent.vertical));
         } else {
             ActiveOpMode.telemetry().addLine(String.format(Locale.ENGLISH, "\n==== (ID %d) Unknown", detectedId.id));
             ActiveOpMode.telemetry().addLine(String.format(Locale.ENGLISH, "Center %6.0f %6.0f (pixels)", detectedId.center.x, detectedId.center.y));

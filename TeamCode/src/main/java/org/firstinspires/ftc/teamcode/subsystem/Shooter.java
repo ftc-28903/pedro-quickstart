@@ -1,6 +1,10 @@
 package org.firstinspires.ftc.teamcode.subsystem;
 
 import com.bylazar.configurables.annotations.Configurable;
+import com.bylazar.telemetry.PanelsTelemetry;
+import com.bylazar.telemetry.TelemetryManager;
+
+import org.firstinspires.ftc.teamcode.opmodes.teleop.MecanumTest;
 
 import dev.nextftc.control.ControlSystem;
 import dev.nextftc.control.KineticState;
@@ -11,6 +15,7 @@ import dev.nextftc.core.commands.utility.InstantCommand;
 import dev.nextftc.core.subsystems.Subsystem;
 import dev.nextftc.ftc.ActiveOpMode;
 import dev.nextftc.hardware.impl.MotorEx;
+import dev.nextftc.hardware.impl.ServoEx;
 
 @Configurable
 public class Shooter implements Subsystem {
@@ -19,10 +24,13 @@ public class Shooter implements Subsystem {
 
     public final MotorEx motor1 = new MotorEx("shooter1").reversed();
     public final MotorEx motor2 = new MotorEx("shooter2");
+    private final ServoEx servo1 = new ServoEx("hood1");
+    private TelemetryManager telemetryM;
 
-    public static double shooterGoal = 1550;
-    public static BasicFeedforwardParameters feedforwardParameters = new BasicFeedforwardParameters(0.00027, 0.0, 0.0);
-    public static PIDCoefficients pidCoefficients = new PIDCoefficients(0.000165, 0, 0.0);
+    public static double shooterGoal = 3000;
+    public static double shooterAngle = 0.1;
+    public static BasicFeedforwardParameters feedforwardParameters = new BasicFeedforwardParameters(0.00052, 0.0, 0.0);
+    public static PIDCoefficients pidCoefficients = new PIDCoefficients(0.000002, 0, 0.0);
 
     private final ControlSystem controlSystem = ControlSystem.builder()
             .basicFF(feedforwardParameters)
@@ -47,7 +55,14 @@ public class Shooter implements Subsystem {
     }
 
     @Override
+    public void initialize() {
+        telemetryM = PanelsTelemetry.INSTANCE.getTelemetry();
+    }
+
+    @Override
     public void periodic() {
+        servo1.setPosition(shooterAngle);
+
         double power = controlSystem.calculate(motor1.getState());
 
         if (shouldStop) {
@@ -65,6 +80,9 @@ public class Shooter implements Subsystem {
         ActiveOpMode.telemetry().addData("cs power", power);
         ActiveOpMode.telemetry().addData("cs goal", controlSystem.getGoal());
         ActiveOpMode.telemetry().addData("shouldStop", shouldStop);
+
+        telemetryM.addData("shooterTargetVelo", controlSystem.getGoal().getVelocity());
+        telemetryM.addData("shooterCurrentVelo", -motor1.getVelocity());
     }
 
     public static final Shooter INSTANCE = new Shooter();
