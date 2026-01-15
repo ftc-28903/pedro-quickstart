@@ -20,7 +20,7 @@ public class Webcam implements Subsystem {
     private AprilTagProcessor aprilTagProcessor;
     private VisionPortal visionPortal;
     private List<AprilTagDetection> detectedTags = new ArrayList<>();
-    public DistanceComponents lastDistanceComponent = null;
+    public DistanceComponents lastDistanceComponent = new DistanceComponents(0,0);
 
     private static final double CAMERA_TILT_DEGREES = 15.0; // Camera tilted upwards
 

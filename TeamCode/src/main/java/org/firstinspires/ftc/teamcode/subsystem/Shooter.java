@@ -5,6 +5,8 @@ import com.bylazar.telemetry.PanelsTelemetry;
 import com.bylazar.telemetry.TelemetryManager;
 
 import org.firstinspires.ftc.teamcode.opmodes.teleop.MecanumTest;
+import org.firstinspires.ftc.teamcode.utils.ShooterCalculator;
+import org.firstinspires.ftc.teamcode.utils.ShotPoint;
 
 import dev.nextftc.control.ControlSystem;
 import dev.nextftc.control.KineticState;
@@ -28,7 +30,7 @@ public class Shooter implements Subsystem {
     private TelemetryManager telemetryM;
 
     public static double shooterGoal = 3000;
-    public static double shooterAngle = 0.1;
+    public static double shooterAngle = 0.2;
     public static BasicFeedforwardParameters feedforwardParameters = new BasicFeedforwardParameters(0.00052, 0.0, 0.0);
     public static PIDCoefficients pidCoefficients = new PIDCoefficients(0.000002, 0, 0.0);
 
@@ -38,14 +40,12 @@ public class Shooter implements Subsystem {
             .build();
 
     public Command spinUp = new InstantCommand(() -> {
-        controlSystem.setGoal(new KineticState(Double.MAX_VALUE, shooterGoal, Double.MAX_VALUE));
         shouldStop = false;
         //motor.setPower(1);
     });
 
     public Command spinDown = new InstantCommand(() -> {
         shouldStop = true;
-        controlSystem.setGoal(new KineticState(Double.MAX_VALUE, 0, Double.MAX_VALUE));
         //motor.setPower(0);
     });
 
@@ -61,15 +61,20 @@ public class Shooter implements Subsystem {
 
     @Override
     public void periodic() {
+        if(!shouldStop) {
+            double distanceCm = Webcam.INSTANCE.lastDistanceComponent.horizontal;
+            ShotPoint calculatedShot = ShooterCalculator.calculateShot(distanceCm);
+            //shooterAngle = calculatedShot.hood;
+            //shooterGoal = calculatedShot.velocity;
+            controlSystem.setGoal(new KineticState(Double.MAX_VALUE, shooterGoal, Double.MAX_VALUE));
+        }
         servo1.setPosition(shooterAngle);
 
         double power = controlSystem.calculate(motor1.getState());
-
         if (shouldStop) {
             motor1.setPower(0);
             motor2.setPower(0);
         } else {
-            controlSystem.setGoal(new KineticState(Double.MAX_VALUE, shooterGoal, Double.MAX_VALUE));
             motor1.setPower(power);
             motor2.setPower(power);
         }

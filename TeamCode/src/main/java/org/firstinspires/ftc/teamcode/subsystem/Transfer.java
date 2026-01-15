@@ -9,7 +9,7 @@ public class Transfer implements Subsystem {
     public static final Transfer INSTANCE = new Transfer();
     private Transfer() {}
 
-    public final MotorEx motor1 = new MotorEx("transfer1").reversed();
+    public final MotorEx motor1 = new MotorEx("transfer1");
 
     public Command spinUp = new InstantCommand(() -> motor1.setPower(1));
     public Command spinUpReverse = new InstantCommand(() -> motor1.setPower(-1));
