@@ -2,11 +2,8 @@ package org.firstinspires.ftc.teamcode.opmodes.teleop;
 
 import com.bylazar.telemetry.PanelsTelemetry;
 import com.bylazar.telemetry.TelemetryManager;
-import com.pedropathing.follower.Follower;
-import com.pedropathing.geometry.Pose;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
-import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 import org.firstinspires.ftc.teamcode.subsystem.Intake;
 import org.firstinspires.ftc.teamcode.subsystem.Shooter;
 import org.firstinspires.ftc.teamcode.subsystem.Transfer;
@@ -46,6 +43,7 @@ public class MecanumTest extends NextFTCOpMode {
     @Override
     public void onInit() {
         telemetryM = PanelsTelemetry.INSTANCE.getTelemetry();
+        Webcam.INSTANCE.init();
     }
 
     @Override
@@ -86,8 +84,22 @@ public class MecanumTest extends NextFTCOpMode {
                 .whenBecomesFalse(() -> Intake.INSTANCE.spinDown.schedule());
 
         Gamepads.gamepad1().cross()
-                .whenBecomesTrue(() -> Transfer.INSTANCE.spinUp.schedule())
-                .whenBecomesFalse(() -> Transfer.INSTANCE.spinDown.schedule());
+                .whenBecomesTrue(() -> Transfer.INSTANCE.overrideOn.schedule())
+                .whenBecomesFalse(() -> Transfer.INSTANCE.overrideOff.schedule());
+
+        Gamepads.gamepad1().share().toggleOnBecomesTrue()
+                .whenBecomesTrue(() -> Transfer.INSTANCE.offOverrideOn.schedule())
+                .whenBecomesFalse(() -> Transfer.INSTANCE.offOverrideOff.schedule());
+
+        Gamepads.gamepad1().rightBumper()
+                .whenBecomesTrue(() -> {
+                    Shooter.shooterGoal = 1650;
+                    Shooter.shooterAngle = 0.6;
+                })
+                .whenBecomesFalse(() -> {
+                    Shooter.shooterGoal = 1350;
+                    Shooter.shooterAngle = 0.4;
+                });
     }
 
     @Override

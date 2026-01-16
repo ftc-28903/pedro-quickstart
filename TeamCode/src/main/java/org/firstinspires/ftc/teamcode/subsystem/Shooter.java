@@ -29,10 +29,10 @@ public class Shooter implements Subsystem {
     private final ServoEx servo1 = new ServoEx("hood1");
     private TelemetryManager telemetryM;
 
-    public static double shooterGoal = 3000;
-    public static double shooterAngle = 0.2;
-    public static BasicFeedforwardParameters feedforwardParameters = new BasicFeedforwardParameters(0.00052, 0.0, 0.0);
-    public static PIDCoefficients pidCoefficients = new PIDCoefficients(0.000002, 0, 0.0);
+    public static double shooterGoal = 1350;
+    public static double shooterAngle = 0.4;
+    public static BasicFeedforwardParameters feedforwardParameters = new BasicFeedforwardParameters(0.00048, 0.0, 0.0);
+    public static PIDCoefficients pidCoefficients = new PIDCoefficients(0.00002, 0, 0.0);
 
     private final ControlSystem controlSystem = ControlSystem.builder()
             .basicFF(feedforwardParameters)
@@ -64,6 +64,7 @@ public class Shooter implements Subsystem {
         if(!shouldStop) {
             double distanceCm = Webcam.INSTANCE.lastDistanceComponent.horizontal;
             ShotPoint calculatedShot = ShooterCalculator.calculateShot(distanceCm);
+            ActiveOpMode.telemetry().addData("shooterDistance", calculatedShot.distanceCm);
             //shooterAngle = calculatedShot.hood;
             //shooterGoal = calculatedShot.velocity;
             controlSystem.setGoal(new KineticState(Double.MAX_VALUE, shooterGoal, Double.MAX_VALUE));

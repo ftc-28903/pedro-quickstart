@@ -22,10 +22,10 @@ public class AutoRoutines {
                 new FollowPath(TrajectoryFactory.INSTANCE.goalShoot, true),
                 new ParallelGroup(
                         Intake.INSTANCE.spinUp,
-                        Transfer.INSTANCE.spinUp
+                        Transfer.INSTANCE.opModeOverrideOn
                 ),
                 new Delay(shootDelay),
-                Transfer.INSTANCE.spinDown,
+                Transfer.INSTANCE.opModeOverrideOff,
 
                 // intake 1 + gate open
                 new FollowPath(TrajectoryFactory.INSTANCE.goalIntake1, true),
@@ -35,21 +35,23 @@ public class AutoRoutines {
                 new Delay(gateOpenDelay),
                 new FollowPath(TrajectoryFactory.INSTANCE.goalGateOpenShoot, true),
                 Intake.INSTANCE.spinUp,
-                Transfer.INSTANCE.spinUp,
+                Transfer.INSTANCE.opModeOverrideOn,
                 new Delay(shootDelay),
-                Transfer.INSTANCE.spinDown,
+                Transfer.INSTANCE.opModeOverrideOff,
 
                 // intake 2
                 new FollowPath(TrajectoryFactory.INSTANCE.goalIntake2, true),
                 new FollowPath(TrajectoryFactory.INSTANCE.goalIntake2Shoot, true),
-                Transfer.INSTANCE.spinUp,
+                Transfer.INSTANCE.opModeOverrideOn,
                 new Delay(shootDelay),
+                Transfer.INSTANCE.opModeOverrideOff,
 
                 // intake 3
                 new FollowPath(TrajectoryFactory.INSTANCE.goalIntake3, true),
                 new FollowPath(TrajectoryFactory.INSTANCE.goalIntake3Shoot, true),
-                Transfer.INSTANCE.spinUp,
+                Transfer.INSTANCE.opModeOverrideOn,
                 new Delay(shootDelay),
+                Transfer.INSTANCE.opModeOverrideOff,
 
                 new FollowPath(TrajectoryFactory.INSTANCE.goalPark, true)
         );

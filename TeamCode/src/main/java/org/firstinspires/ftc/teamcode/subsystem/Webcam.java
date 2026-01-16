@@ -75,8 +75,7 @@ public class Webcam implements Subsystem {
         }
     }
 
-    @Override
-    public void initialize() {
+    public void init() {
         aprilTagProcessor = new AprilTagProcessor.Builder()
                 .setDrawTagID(true)
                 .setDrawTagOutline(true)

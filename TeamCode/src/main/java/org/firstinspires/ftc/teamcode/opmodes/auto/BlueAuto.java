@@ -17,7 +17,6 @@ import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 
 @Autonomous(name = "BlueAuto")
 public class BlueAuto extends NextFTCOpMode {
-    TrajectoryFactory trajectoryFactory;
     public BlueAuto() {
         addComponents(
                 new SubsystemComponent(Intake.INSTANCE, Shooter.INSTANCE, Transfer.INSTANCE, Webcam.INSTANCE),
@@ -33,6 +32,6 @@ public class BlueAuto extends NextFTCOpMode {
 
     @Override
     public void onStartButtonPressed() {
-        AutoRoutines.INSTANCE.getTwelveattemptgroup();
+        AutoRoutines.INSTANCE.getTwelveattemptgroup().schedule();
     }
 }
