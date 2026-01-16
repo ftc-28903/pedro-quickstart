@@ -8,12 +8,12 @@ import dev.nextftc.ftc.NextFTCOpMode;
 import dev.nextftc.ftc.components.BulkReadComponent;
 import dev.nextftc.hardware.impl.MotorEx;
 
-@Autonomous(name = "fartest")
-public class AutoTest2 extends NextFTCOpMode {
+@Autonomous(name = "FarAuto")
+public class FarAuto extends NextFTCOpMode {
     private ElapsedTime timer1 = new ElapsedTime();
     private ElapsedTime timer2 = new ElapsedTime();
-    public int state;
-    public AutoTest2() {
+    public int state = 1;
+    public FarAuto() {
         addComponents(
                 BulkReadComponent.INSTANCE,
                 BindingsComponent.INSTANCE
@@ -47,10 +47,11 @@ public class AutoTest2 extends NextFTCOpMode {
     public void onUpdate() {
         switch (state) {
             case 1:
-                if (timer1.milliseconds() > 1000) {
+                if (timer1.milliseconds() > 750) {
                     runAllMotors(0,0,0,0);
                     state = 3;
                 }
+                break;
             case 3:
 
         }

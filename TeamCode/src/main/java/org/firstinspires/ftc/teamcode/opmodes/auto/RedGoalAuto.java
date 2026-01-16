@@ -2,19 +2,18 @@ package org.firstinspires.ftc.teamcode.opmodes.auto;
 
 import com.pedropathing.util.Timer;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
-import com.qualcomm.robotcore.util.ElapsedTime;
 
 import dev.nextftc.core.components.BindingsComponent;
 import dev.nextftc.ftc.NextFTCOpMode;
 import dev.nextftc.ftc.components.BulkReadComponent;
 import dev.nextftc.hardware.impl.MotorEx;
 
-@Autonomous(name = "goaltest")
-public class AutoTest extends NextFTCOpMode {
-    private Timer timer1 = new Timer();
-    private Timer timer2 = new Timer();
-    public int state;
-    public AutoTest() {
+@Autonomous(name = "RedGoalAuto")
+public class RedGoalAuto extends NextFTCOpMode {
+    private final Timer timer1 = new Timer();
+    private final Timer timer2 = new Timer();
+    public int state = 1;
+    public RedGoalAuto() {
         addComponents(
                 BulkReadComponent.INSTANCE,
                 BindingsComponent.INSTANCE
@@ -48,18 +47,20 @@ public class AutoTest extends NextFTCOpMode {
     public void onUpdate() {
         switch (state) {
             case 1:
-                if(timer1.getElapsedTimeSeconds() > 1) {
-                    runAllMotors(-0.5,0.5,-0.5,0.5);
+                if(timer1.getElapsedTimeSeconds() > 0.5) {
+                    runAllMotors(0.5,-0.5,-0.5,0.5);
                     timer2.resetTimer();
                     state = 2;
                 }
+                break;
             case 2:
-                if (timer2.getElapsedTimeSeconds() > 1) {
-                    runAllMotors(0,0,0,0);
+                if (timer2.getElapsedTimeSeconds() > 0.8) {
+                    zeroMotors();
                     state = 3;
                 }
+                break;
             case 3:
-
+                break;
         }
     }
 }

@@ -53,9 +53,9 @@ public class MecanumTest extends NextFTCOpMode {
                 frontRightMotor,
                 backLeftMotor,
                 backRightMotor,
-                Gamepads.gamepad1().leftStickY().negate(),
-                Gamepads.gamepad1().leftStickX(),
-                Gamepads.gamepad1().rightStickX()
+                Gamepads.gamepad1().leftStickY().negate().map(y -> slowMode ? y * slowModeMultiplier : y),
+                Gamepads.gamepad1().leftStickX().map(x -> slowMode ? x * slowModeMultiplier : x),
+                Gamepads.gamepad1().rightStickX().map(x -> slowMode ? x * slowModeMultiplier : x)
         );
         driverControlled.schedule();
 
