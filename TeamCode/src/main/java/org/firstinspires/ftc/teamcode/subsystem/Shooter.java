@@ -57,7 +57,9 @@ public class Shooter implements Subsystem {
     public boolean isSpeedGood() {
         if (shouldStop) return true;
         double speed = -motor1.getVelocity();
-        return speed-controlSystem.getGoal().getVelocity() > velocityTolerance;
+        double target = controlSystem.getGoal().getVelocity();
+        
+        return speed >= target - velocityTolerance;
     }
 
     @Override
