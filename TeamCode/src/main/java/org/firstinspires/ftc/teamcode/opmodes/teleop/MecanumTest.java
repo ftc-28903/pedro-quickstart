@@ -75,7 +75,7 @@ public class MecanumTest extends NextFTCOpMode {
                 .whenBecomesTrue(() -> Shooter.INSTANCE.spinUp.schedule())
                 .whenBecomesFalse(() -> Shooter.INSTANCE.spinDown.schedule());
 
-        Gamepads.gamepad1().leftTrigger().greaterThan(0.2)
+        Gamepads.gamepad1().leftTrigger().greaterThan(0.2).toggleOnBecomesTrue()
                 .whenBecomesTrue(() -> Intake.INSTANCE.spinUp.schedule())
                 .whenBecomesFalse(() -> Intake.INSTANCE.spinDown.schedule());
 

@@ -102,6 +102,14 @@ public class Webcam implements Subsystem {
         }
 
         displayDetectionTelemetry(id20);
+
+        
+        
+        StringBuilder sb = new StringBuilder("detected tags: ");
+        for (AprilTagDetection detection : getDetectedTags()) {
+            sb.append(detection.id);
+        }
+        ActiveOpMode.telemetry().addLine(sb.toString());
     }
 
     public List<AprilTagDetection> getDetectedTags() {

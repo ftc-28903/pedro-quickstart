@@ -1,5 +1,7 @@
 package org.firstinspires.ftc.teamcode.subsystem;
 
+import android.health.connect.datatypes.ExerciseLap;
+
 import com.bylazar.configurables.annotations.Configurable;
 import com.qualcomm.hardware.rev.RevColorSensorV3;
 import com.qualcomm.robotcore.util.ElapsedTime;
@@ -28,6 +30,7 @@ public class Transfer implements Subsystem {
     public boolean offOverride = false;
     public final MotorEx motor1 = new MotorEx("transfer1");
     public RevColorSensorV3 colorSensorV3;
+    private ElapsedTime shootTimer = new ElapsedTime();
 
     public Command overrideOn = new InstantCommand(() -> override = true);
     public Command spinUpReverse = new InstantCommand(() -> motor1.setPower(-1));
@@ -58,15 +61,16 @@ public class Transfer implements Subsystem {
             return;
         }
 
-        if (override || opModeOverride) {
+        if (lastDistance > detectDist) {
+            motor1.setPower(maxMotorSpeed);
+            return;
+        }
+
+        if ((override || opModeOverride) && Shooter.INSTANCE.isSpeedGood()) {
             motor1.setPower(maxOverrideSpeed);
             return;
         }
 
-        if (lastDistance > detectDist) {
-            motor1.setPower(maxMotorSpeed);
-        } else {
-            motor1.setPower(0);
-        }
+        motor1.setPower(0);
     }
 }

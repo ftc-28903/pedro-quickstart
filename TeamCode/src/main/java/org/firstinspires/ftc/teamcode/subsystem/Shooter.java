@@ -4,7 +4,6 @@ import com.bylazar.configurables.annotations.Configurable;
 import com.bylazar.telemetry.PanelsTelemetry;
 import com.bylazar.telemetry.TelemetryManager;
 
-import org.firstinspires.ftc.teamcode.opmodes.teleop.MecanumTest;
 import org.firstinspires.ftc.teamcode.utils.ShooterCalculator;
 import org.firstinspires.ftc.teamcode.utils.ShotPoint;
 
@@ -30,13 +29,14 @@ public class Shooter implements Subsystem {
     private TelemetryManager telemetryM;
 
     public static double shooterGoal = 1350;
-    public static double shooterAngle = 0.4;
-    public static BasicFeedforwardParameters feedforwardParameters = new BasicFeedforwardParameters(0.00048, 0.0, 0.0);
+    public static double shooterAngle = 0.5;
+    public static BasicFeedforwardParameters feedforwardParameters = new BasicFeedforwardParameters(0.000475, 0.0, 0.0);
     public static PIDCoefficients pidCoefficients = new PIDCoefficients(0.00002, 0, 0.0);
+    public static double velocityTolerance = 50;
 
     private final ControlSystem controlSystem = ControlSystem.builder()
             .basicFF(feedforwardParameters)
-            .velPid(pidCoefficients)
+            .velSquID(pidCoefficients)
             .build();
 
     public Command spinUp = new InstantCommand(() -> {
@@ -52,6 +52,12 @@ public class Shooter implements Subsystem {
     // ticksPerSecond = RPM x 28 / 60
     public double ticksToRPM(double ticksPerSecond, double countsPerRevolution) {
         return (ticksPerSecond / countsPerRevolution * 60);
+    }
+
+    public boolean isSpeedGood() {
+        if (shouldStop) return true;
+        double speed = -motor1.getVelocity();
+        return speed-controlSystem.getGoal().getVelocity() > velocityTolerance;
     }
 
     @Override
