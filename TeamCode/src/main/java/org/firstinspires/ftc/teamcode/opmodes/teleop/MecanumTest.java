@@ -3,6 +3,7 @@ package org.firstinspires.ftc.teamcode.opmodes.teleop;
 import com.bylazar.telemetry.PanelsTelemetry;
 import com.bylazar.telemetry.TelemetryManager;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.teamcode.subsystem.Intake;
 import org.firstinspires.ftc.teamcode.subsystem.Shooter;
@@ -27,6 +28,8 @@ public class MecanumTest extends NextFTCOpMode {
                 new SubsystemComponent(Shooter.INSTANCE, Intake.INSTANCE, Transfer.INSTANCE, Webcam.INSTANCE)
         );
     }
+
+    private final ElapsedTime loopTimeTimer = new ElapsedTime();
 
     private final MotorEx frontLeftMotor = new MotorEx("front_left");
     private final MotorEx frontRightMotor = new MotorEx("front_right").reversed();
@@ -108,5 +111,7 @@ public class MecanumTest extends NextFTCOpMode {
 
         telemetryM.addData("slowMode toggle", slowMode);
         telemetryM.addData("slowMode multiplier", slowModeMultiplier);
+        telemetryM.addData("loop time", loopTimeTimer.milliseconds());
+        loopTimeTimer.reset();
     }
 }

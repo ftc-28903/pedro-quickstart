@@ -2,6 +2,8 @@ package org.firstinspires.ftc.teamcode.subsystem;
 
 import android.util.Size;
 
+import com.bylazar.configurables.annotations.Configurable;
+
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
@@ -16,6 +18,7 @@ import java.util.Locale;
 import dev.nextftc.core.subsystems.Subsystem;
 import dev.nextftc.ftc.ActiveOpMode;
 
+@Configurable
 public class Webcam implements Subsystem {
     private AprilTagProcessor aprilTagProcessor;
     private VisionPortal visionPortal;
@@ -23,6 +26,7 @@ public class Webcam implements Subsystem {
     public DistanceComponents lastDistanceComponent = new DistanceComponents(0,0);
 
     private static final double CAMERA_TILT_DEGREES = 15.0; // Camera tilted upwards
+    public static float decimation = 2.0f;
 
     /**
      * Calculates the horizontal distance to an AprilTag, excluding height difference.
@@ -82,7 +86,12 @@ public class Webcam implements Subsystem {
                 .setDrawAxes(true)
                 .setDrawCubeProjection(true)
                 .setOutputUnits(DistanceUnit.CM, AngleUnit.DEGREES)
+
+                .setTagFamily(AprilTagProcessor.TagFamily.TAG_36h11)
+
                 .build();
+
+        aprilTagProcessor.setDecimation(2.0f);
 
         VisionPortal.Builder builder = new VisionPortal.Builder();
         builder.setCamera(ActiveOpMode.hardwareMap().get(WebcamName.class, "Webcam 1"));
@@ -94,6 +103,7 @@ public class Webcam implements Subsystem {
 
     @Override
     public void periodic() {
+        aprilTagProcessor.setDecimation(decimation);
         detectedTags = aprilTagProcessor.getDetections();
 
         AprilTagDetection id20 = getTagBySpecificId(20);

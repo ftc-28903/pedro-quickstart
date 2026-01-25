@@ -4,6 +4,7 @@ import com.bylazar.configurables.annotations.Configurable;
 import com.bylazar.telemetry.PanelsTelemetry;
 import com.bylazar.telemetry.TelemetryManager;
 
+import org.firstinspires.ftc.teamcode.utils.FlywheelShooterCalculator;
 import org.firstinspires.ftc.teamcode.utils.ShooterCalculator;
 import org.firstinspires.ftc.teamcode.utils.ShotPoint;
 
@@ -70,9 +71,11 @@ public class Shooter implements Subsystem {
     @Override
     public void periodic() {
         if(!shouldStop) {
-            double distanceCm = Webcam.INSTANCE.lastDistanceComponent.horizontal;
-            ShotPoint calculatedShot = ShooterCalculator.calculateShot(distanceCm);
-            ActiveOpMode.telemetry().addData("shooterDistance", calculatedShot.distanceCm);
+            double distanceHorizontalCm = Webcam.INSTANCE.lastDistanceComponent.horizontal;
+            double distanceVerticalCm = Webcam.INSTANCE.lastDistanceComponent.vertical;
+            FlywheelShooterCalculator.ShootingSolution shootingSolution = FlywheelShooterCalculator.findOptimalShootingSolution(distanceHorizontalCm, distanceVerticalCm);
+            ActiveOpMode.telemetry().addData("shooterDistanceX", distanceHorizontalCm);
+            ActiveOpMode.telemetry().addData("shooterDistanceY", distanceVerticalCm);
             //shooterAngle = calculatedShot.hood;
             //shooterGoal = calculatedShot.velocity;
             controlSystem.setGoal(new KineticState(Double.MAX_VALUE, shooterGoal, Double.MAX_VALUE));
