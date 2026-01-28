@@ -1,6 +1,8 @@
 package org.firstinspires.ftc.teamcode.utils;
 
-import android.annotation.SuppressLint;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 
 public class FlywheelShooterCalculator {
 
@@ -28,6 +30,10 @@ public class FlywheelShooterCalculator {
     // --- Simulation Configuration ---
     private static final double TIME_STEP = 0.001; // 1ms accuracy
     private static final double MAX_SEARCH_VELOCITY = 60.0; // m/s limit for safety
+
+    public static void main(String[] args) throws IOException {
+        generateShootingTables(new File("."), 0.7);
+    }
 
     /**
      * Loops through angles and uses Binary Search to find the velocity required for each.
@@ -118,6 +124,41 @@ public class FlywheelShooterCalculator {
         }
 
         return y;
+    }
+
+    public static void generateShootingTables(File directory, double targetY) throws IOException {
+
+        File hoodFile = new File(directory, "hood_angle_table.csv");
+        File flywheelFile = new File(directory, "flywheel_speed_table.csv");
+
+        FileWriter hoodWriter = new FileWriter(hoodFile);
+        FileWriter flyWriter = new FileWriter(flywheelFile);
+
+        // CSV Headers
+        hoodWriter.append("Distance,HoodAngleDeg\n");
+        flyWriter.append("Distance,FlywheelRPM\n");
+
+        // Loop from 40 to 400 (step 1)
+        for (int dist = 40; dist <= 400; dist++) {
+
+            double distance = dist;  // Change scaling here if needed
+
+            ShootingSolution solution = findOptimalShootingSolution(distance/100, targetY);
+
+            if (solution != null) {
+                hoodWriter.append(distance + "," + solution.hoodAngleDeg + "\n");
+                flyWriter.append(distance + "," + solution.flywheelRPM + "\n");
+            } else {
+                // Mark invalid shots
+                hoodWriter.append(distance + ",NaN\n");
+                flyWriter.append(distance + ",NaN\n");
+            }
+        }
+
+        hoodWriter.flush();
+        flyWriter.flush();
+        hoodWriter.close();
+        flyWriter.close();
     }
 
     /**

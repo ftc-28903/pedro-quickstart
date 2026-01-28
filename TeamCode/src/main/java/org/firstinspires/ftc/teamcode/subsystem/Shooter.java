@@ -4,10 +4,6 @@ import com.bylazar.configurables.annotations.Configurable;
 import com.bylazar.telemetry.PanelsTelemetry;
 import com.bylazar.telemetry.TelemetryManager;
 
-import org.firstinspires.ftc.teamcode.utils.FlywheelShooterCalculator;
-import org.firstinspires.ftc.teamcode.utils.ShooterCalculator;
-import org.firstinspires.ftc.teamcode.utils.ShotPoint;
-
 import dev.nextftc.control.ControlSystem;
 import dev.nextftc.control.KineticState;
 import dev.nextftc.control.feedback.PIDCoefficients;
@@ -54,6 +50,9 @@ public class Shooter implements Subsystem {
     public double ticksToRPM(double ticksPerSecond, double countsPerRevolution) {
         return (ticksPerSecond / countsPerRevolution * 60);
     }
+    public double rpmToTicks(double rpm, double countsPerRevolution) {
+        return (rpm * countsPerRevolution / 60);
+    }
 
     public boolean isSpeedGood() {
         if (shouldStop) return true;
@@ -61,6 +60,23 @@ public class Shooter implements Subsystem {
         double target = controlSystem.getGoal().getVelocity();
         
         return speed >= target - velocityTolerance;
+    }
+
+    public double calculateHood(double x) {
+        // https://curve.fit/EYtVgRN7/single/20260128111854
+        double a = -1.020e-06;
+        double b = 9.253e-04;
+        double c = -2.979e-01;
+        double d = 8.410e+01;
+
+        return ((a * x + b) * x + c) * x + d;
+    }
+
+    public double calculateRPM(double x) {
+        // https://curve.fit/zMDoKIss/single/20260128111013
+        double m = 5.880e+00;
+        double b = 1.955e+03;
+        return m*x+b;
     }
 
     @Override
@@ -73,9 +89,15 @@ public class Shooter implements Subsystem {
         if(!shouldStop) {
             double distanceHorizontalCm = Webcam.INSTANCE.lastDistanceComponent.horizontal;
             double distanceVerticalCm = Webcam.INSTANCE.lastDistanceComponent.vertical;
-            FlywheelShooterCalculator.ShootingSolution shootingSolution = FlywheelShooterCalculator.findOptimalShootingSolution(distanceHorizontalCm, distanceVerticalCm);
             ActiveOpMode.telemetry().addData("shooterDistanceX", distanceHorizontalCm);
             ActiveOpMode.telemetry().addData("shooterDistanceY", distanceVerticalCm);
+            double calculatedRPM = calculateRPM(distanceHorizontalCm);
+            double calculatedTicks = rpmToTicks(calculatedRPM, 28);
+            double calculatedHood = calculateHood(distanceHorizontalCm);
+
+            telemetryM.addData("shooterTicksEstimate", calculatedTicks);
+            telemetryM.addData("shooterHoodEstimate", calculatedHood);
+
             //shooterAngle = calculatedShot.hood;
             //shooterGoal = calculatedShot.velocity;
             controlSystem.setGoal(new KineticState(Double.MAX_VALUE, shooterGoal, Double.MAX_VALUE));
