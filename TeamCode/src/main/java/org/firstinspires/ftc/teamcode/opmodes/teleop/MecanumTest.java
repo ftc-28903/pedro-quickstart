@@ -16,7 +16,10 @@ import dev.nextftc.core.components.SubsystemComponent;
 import dev.nextftc.ftc.Gamepads;
 import dev.nextftc.ftc.NextFTCOpMode;
 import dev.nextftc.ftc.components.BulkReadComponent;
+import dev.nextftc.hardware.driving.FieldCentric;
 import dev.nextftc.hardware.driving.MecanumDriverControlled;
+import dev.nextftc.hardware.impl.Direction;
+import dev.nextftc.hardware.impl.IMUEx;
 import dev.nextftc.hardware.impl.MotorEx;
 
 @TeleOp(name = "MecanumTest")
@@ -28,6 +31,8 @@ public class MecanumTest extends NextFTCOpMode {
                 new SubsystemComponent(Shooter.INSTANCE, Intake.INSTANCE, Transfer.INSTANCE, Webcam.INSTANCE)
         );
     }
+
+    private final IMUEx imu = new IMUEx("imu", Direction.UP, Direction.FORWARD);
 
     private final ElapsedTime loopTimeTimer = new ElapsedTime();
 
@@ -59,6 +64,7 @@ public class MecanumTest extends NextFTCOpMode {
                 Gamepads.gamepad1().leftStickY().negate().map(y -> slowMode ? y * slowModeMultiplier : y),
                 Gamepads.gamepad1().leftStickX().map(x -> slowMode ? x * slowModeMultiplier : x),
                 Gamepads.gamepad1().rightStickX().map(x -> slowMode ? x * slowModeMultiplier : x)
+                //new FieldCentric(imu)
         );
         driverControlled.schedule();
 
@@ -75,8 +81,8 @@ public class MecanumTest extends NextFTCOpMode {
                         slowModeMultiplier = Math.max(slowModeStep, slowModeMultiplier-slowModeStep));
 
         Gamepads.gamepad1().rightTrigger().greaterThan(0.2)
-                .whenBecomesTrue(() -> Shooter.INSTANCE.spinUp.schedule())
-                .whenBecomesFalse(() -> Shooter.INSTANCE.spinDown.schedule());
+                .whenBecomesTrue(() -> Transfer.INSTANCE.overrideOn.schedule())
+                .whenBecomesFalse(() -> Transfer.INSTANCE.overrideOff.schedule());
 
         Gamepads.gamepad1().leftTrigger().greaterThan(0.2).toggleOnBecomesTrue()
                 .whenBecomesTrue(() -> Intake.INSTANCE.spinUp.schedule())
@@ -86,9 +92,12 @@ public class MecanumTest extends NextFTCOpMode {
                 .whenBecomesTrue(() -> Intake.INSTANCE.spinUpReverse.schedule())
                 .whenBecomesFalse(() -> Intake.INSTANCE.spinDown.schedule());
 
-        Gamepads.gamepad1().cross()
-                .whenBecomesTrue(() -> Transfer.INSTANCE.overrideOn.schedule())
-                .whenBecomesFalse(() -> Transfer.INSTANCE.overrideOff.schedule());
+        Gamepads.gamepad1().cross().toggleOnBecomesTrue()
+                .whenBecomesTrue(() -> Shooter.INSTANCE.spinUp.schedule())
+                .whenBecomesFalse(() -> Shooter.INSTANCE.spinDown.schedule());
+
+        Gamepads.gamepad1().triangle()
+                        .whenBecomesTrue(imu::zero);
 
         Gamepads.gamepad1().share().toggleOnBecomesTrue()
                 .whenBecomesTrue(() -> Transfer.INSTANCE.offOverrideOn.schedule())

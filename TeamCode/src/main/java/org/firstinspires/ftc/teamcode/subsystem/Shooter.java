@@ -3,6 +3,7 @@ package org.firstinspires.ftc.teamcode.subsystem;
 import com.bylazar.configurables.annotations.Configurable;
 import com.bylazar.telemetry.PanelsTelemetry;
 import com.bylazar.telemetry.TelemetryManager;
+import com.qualcomm.robotcore.hardware.VoltageSensor;
 
 import dev.nextftc.control.ControlSystem;
 import dev.nextftc.control.KineticState;
@@ -20,16 +21,20 @@ public class Shooter implements Subsystem {
     public boolean shouldStop = true;
     private Shooter() { }
 
+    public VoltageSensor voltageSensor;
     public final MotorEx motor1 = new MotorEx("shooter1").reversed();
     public final MotorEx motor2 = new MotorEx("shooter2");
     private final ServoEx servo1 = new ServoEx("hood1");
     private TelemetryManager telemetryM;
 
-    public static double shooterGoal = 1350;
-    public static double shooterAngle = 0.5;
-    public static BasicFeedforwardParameters feedforwardParameters = new BasicFeedforwardParameters(0.000475, 0.0, 0.0);
-    public static PIDCoefficients pidCoefficients = new PIDCoefficients(0.00002, 0, 0.0);
+    public static double shooterGoal = 1250;
+    public static double shooterPowerOverride = 0.1;
+    public static double shooterAngle = 0.58;
+    public static BasicFeedforwardParameters feedforwardParameters = new BasicFeedforwardParameters(0.00054, 0.0, 0.0);
+    public static PIDCoefficients pidCoefficients = new PIDCoefficients(0.000000005, 0, 0.0);
     public static double velocityTolerance = 50;
+    public static double voltageCalibration = 13.0;
+
 
     private final ControlSystem controlSystem = ControlSystem.builder()
             .basicFF(feedforwardParameters)
@@ -62,7 +67,7 @@ public class Shooter implements Subsystem {
         return speed >= target - velocityTolerance;
     }
 
-    public double calculateHood(double x) {
+    public double calculateHood2(double x) {
         // https://curve.fit/EYtVgRN7/single/20260128111854
         double a = -1.020e-06;
         double b = 9.253e-04;
@@ -72,21 +77,51 @@ public class Shooter implements Subsystem {
         return ((a * x + b) * x + c) * x + d;
     }
 
-    public double calculateRPM(double x) {
+    public double calculateRPM2(double x) {
         // https://curve.fit/zMDoKIss/single/20260128111013
         double m = 5.880e+00;
         double b = 1.955e+03;
         return m*x+b;
     }
 
+    public double calculateHood(double x) {
+        if (x > 270) {
+            return 0.85;
+        }
+        return 0.8;
+    }
+
+    public double calculateRPM(double x) {
+        // https://curve.fit/KjezG82L/single/20260130071921
+        double m = 1.402e+00;
+        double b = 1.032e+03;
+
+        return m*x+b;
+    }
+
+    public double feedforwardProvider(double speedinp) {
+        double speed = speedinp+80;
+        // https://curve.fit/KjezG82L/single/20260130064210
+        double a = 2.824e-10;
+        double b = -7.497e-07;
+        double c = 1.013e-03;
+        double d = -7.218e-02;
+
+        return ((a * speed + b) * speed + c) * speed + d;
+    }
+
     @Override
     public void initialize() {
         telemetryM = PanelsTelemetry.INSTANCE.getTelemetry();
+        voltageSensor = ActiveOpMode.hardwareMap().get(VoltageSensor.class, "Control Hub");;
     }
 
     @Override
     public void periodic() {
-        if(!shouldStop) {
+        double batteryVoltage = voltageSensor.getVoltage();
+        telemetryM.addData("batteryVoltage", batteryVoltage);
+
+        if(true) {
             double distanceHorizontalCm = Webcam.INSTANCE.lastDistanceComponent.horizontal;
             double distanceVerticalCm = Webcam.INSTANCE.lastDistanceComponent.vertical;
             ActiveOpMode.telemetry().addData("shooterDistanceX", distanceHorizontalCm);
@@ -98,30 +133,37 @@ public class Shooter implements Subsystem {
             telemetryM.addData("shooterTicksEstimate", calculatedTicks);
             telemetryM.addData("shooterHoodEstimate", calculatedHood);
 
-            //shooterAngle = calculatedShot.hood;
-            //shooterGoal = calculatedShot.velocity;
+            shooterAngle = calculatedHood;
+            shooterGoal = calculatedRPM;
             controlSystem.setGoal(new KineticState(Double.MAX_VALUE, shooterGoal, Double.MAX_VALUE));
         }
         servo1.setPosition(shooterAngle);
 
-        double power = controlSystem.calculate(motor1.getState());
+        //double rawPower = controlSystem.calculate(motor1.getState());
+        double rawPower = feedforwardProvider(shooterGoal);
+
+        double compensatedPower = rawPower * (voltageCalibration / batteryVoltage);
+
+        // Prevent clipping explosions
+        compensatedPower = Math.max(-1.0, Math.min(1.0, compensatedPower));
+        telemetryM.addData("shooterCompensatedPower", compensatedPower);
         if (shouldStop) {
             motor1.setPower(0);
             motor2.setPower(0);
         } else {
-            motor1.setPower(power);
-            motor2.setPower(power);
+            motor1.setPower(compensatedPower);
+            motor2.setPower(compensatedPower);
         }
         ActiveOpMode.telemetry().addData("shooter1 ticks/s", motor1.getVelocity());
         ActiveOpMode.telemetry().addData("shooter1 rpm", ticksToRPM(motor1.getVelocity(), 28));
         ActiveOpMode.telemetry().addData("shooter2 ticks/s", motor2.getVelocity());
         ActiveOpMode.telemetry().addData("shooter2 rpm", ticksToRPM(motor2.getVelocity(), 28));
-        ActiveOpMode.telemetry().addData("cs power", power);
+        ActiveOpMode.telemetry().addData("cs power", rawPower);
         ActiveOpMode.telemetry().addData("cs goal", controlSystem.getGoal());
         ActiveOpMode.telemetry().addData("shouldStop", shouldStop);
 
         telemetryM.addData("shooterTargetVelo", controlSystem.getGoal().getVelocity());
-        telemetryM.addData("shooterCurrentVelo", -motor1.getVelocity());
+        telemetryM.addData("shooterCurrentVelo", Math.abs(motor1.getVelocity()));
     }
 
     public static final Shooter INSTANCE = new Shooter();
