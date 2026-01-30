@@ -5,10 +5,13 @@ import com.bylazar.telemetry.PanelsTelemetry;
 import com.bylazar.telemetry.TelemetryManager;
 import com.qualcomm.robotcore.hardware.VoltageSensor;
 
+import org.firstinspires.ftc.teamcode.subsystem.ff.ShooterFeedforward;
+
 import dev.nextftc.control.ControlSystem;
 import dev.nextftc.control.KineticState;
 import dev.nextftc.control.feedback.PIDCoefficients;
 import dev.nextftc.control.feedforward.BasicFeedforwardParameters;
+import dev.nextftc.control.feedforward.FeedforwardElement;
 import dev.nextftc.core.commands.Command;
 import dev.nextftc.core.commands.utility.InstantCommand;
 import dev.nextftc.core.subsystems.Subsystem;
@@ -30,14 +33,13 @@ public class Shooter implements Subsystem {
     public static double shooterGoal = 1250;
     public static double shooterPowerOverride = 0.1;
     public static double shooterAngle = 0.58;
-    public static BasicFeedforwardParameters feedforwardParameters = new BasicFeedforwardParameters(0.00054, 0.0, 0.0);
     public static PIDCoefficients pidCoefficients = new PIDCoefficients(0.000000005, 0, 0.0);
     public static double velocityTolerance = 50;
     public static double voltageCalibration = 13.0;
 
 
     private final ControlSystem controlSystem = ControlSystem.builder()
-            .basicFF(feedforwardParameters)
+            .feedforward(new ShooterFeedforward())
             .velSquID(pidCoefficients)
             .build();
 
@@ -99,17 +101,6 @@ public class Shooter implements Subsystem {
         return m*x+b;
     }
 
-    public double feedforwardProvider(double speedinp) {
-        double speed = speedinp+80;
-        // https://curve.fit/KjezG82L/single/20260130064210
-        double a = 2.824e-10;
-        double b = -7.497e-07;
-        double c = 1.013e-03;
-        double d = -7.218e-02;
-
-        return ((a * speed + b) * speed + c) * speed + d;
-    }
-
     @Override
     public void initialize() {
         telemetryM = PanelsTelemetry.INSTANCE.getTelemetry();
@@ -139,10 +130,9 @@ public class Shooter implements Subsystem {
         }
         servo1.setPosition(shooterAngle);
 
-        //double rawPower = controlSystem.calculate(motor1.getState());
-        double rawPower = feedforwardProvider(shooterGoal);
+        double rawPower = controlSystem.calculate(motor1.getState());
 
-        double compensatedPower = rawPower * (voltageCalibration / batteryVoltage);
+        double compensatedPower = rawPower * (voltageCalibration / batteryVoltage) + controlSystem.calculate(motor1.getState());
 
         // Prevent clipping explosions
         compensatedPower = Math.max(-1.0, Math.min(1.0, compensatedPower));

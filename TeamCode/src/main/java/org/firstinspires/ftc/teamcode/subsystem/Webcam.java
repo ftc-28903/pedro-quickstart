@@ -5,6 +5,8 @@ import static dev.nextftc.ftc.ActiveOpMode.isStopRequested;
 import android.util.Size;
 
 import com.bylazar.configurables.annotations.Configurable;
+import com.bylazar.telemetry.PanelsTelemetry;
+import com.bylazar.telemetry.TelemetryManager;
 
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
 import org.firstinspires.ftc.robotcore.external.hardware.camera.controls.ExposureControl;
@@ -22,16 +24,23 @@ import java.util.concurrent.TimeUnit;
 
 import dev.nextftc.core.subsystems.Subsystem;
 import dev.nextftc.ftc.ActiveOpMode;
+import dev.nextftc.hardware.impl.Direction;
+import dev.nextftc.hardware.impl.IMUEx;
 
 @Configurable
 public class Webcam implements Subsystem {
     private AprilTagProcessor aprilTagProcessor;
     private VisionPortal visionPortal;
     private List<AprilTagDetection> detectedTags = new ArrayList<>();
-    public DistanceComponents lastDistanceComponent = new DistanceComponents(0,0);
+    // goal auto approx, far should see it (almost) immediately
+    public DistanceComponents lastDistanceComponent = new DistanceComponents(120,45);
+    private final IMUEx imu = new IMUEx("imu", Direction.UP, Direction.FORWARD);
 
     private static final double CAMERA_TILT_DEGREES = 15.0; // Camera tilted upwards
     public static float decimation = 2.0f;
+    private TelemetryManager telemetryM;
+    public double imuTarget;
+    public double lastOffset;
 
     /**
      * Calculates the horizontal distance to an AprilTag, excluding height difference.
@@ -84,16 +93,39 @@ public class Webcam implements Subsystem {
         }
     }
 
+    public double getTurnToBackOfTag(AprilTagDetection detection) {
+        if (detection == null) return 0;
+
+        DistanceComponents d = getDistanceComponents(detection);
+        double forward = d.horizontal;
+
+        double bearingRad = Math.toRadians(detection.ftcPose.bearing);
+        double side = forward * Math.tan(bearingRad);
+
+        double x_tag = side;
+        double y_tag = forward;
+
+        double tagYawRad = Math.toRadians(detection.ftcPose.yaw);
+
+        double backX = -46 * Math.sin(tagYawRad);
+        double backY = -46 * Math.cos(tagYawRad);
+
+        double targetX = x_tag + backX;
+        double targetY = y_tag + backY;
+
+        return Math.toDegrees(Math.atan2(targetX, targetY));
+    }
+
     public void init() {
+        telemetryM = PanelsTelemetry.INSTANCE.getTelemetry();
+
         aprilTagProcessor = new AprilTagProcessor.Builder()
                 .setDrawTagID(true)
                 .setDrawTagOutline(true)
                 .setDrawAxes(true)
                 .setDrawCubeProjection(true)
                 .setOutputUnits(DistanceUnit.CM, AngleUnit.DEGREES)
-
                 .setTagFamily(AprilTagProcessor.TagFamily.TAG_36h11)
-
                 .build();
 
         aprilTagProcessor.setDecimation(2.0f);
@@ -113,12 +145,14 @@ public class Webcam implements Subsystem {
         aprilTagProcessor.setDecimation(decimation);
         detectedTags = aprilTagProcessor.getDetections();
 
-        AprilTagDetection id20 = getTagBySpecificId(20);
-        if(id20 != null && id20.metadata != null) {
-            lastDistanceComponent = getDistanceComponents(id20);
+        AprilTagDetection allianceTag = getTagBySpecificId(20);
+        if(allianceTag != null && allianceTag.metadata != null) {
+            lastDistanceComponent = getDistanceComponents(allianceTag);
+            lastOffset = getTurnToBackOfTag(allianceTag);
+            imuTarget = imu.get().inDeg + lastOffset;
         }
 
-        displayDetectionTelemetry(id20);
+        displayDetectionTelemetry(allianceTag);
         
         StringBuilder sb = new StringBuilder("detected tags: ");
         for (AprilTagDetection detection : getDetectedTags()) {
