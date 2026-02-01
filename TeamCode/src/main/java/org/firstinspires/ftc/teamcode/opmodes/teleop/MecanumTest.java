@@ -9,7 +9,11 @@ import org.firstinspires.ftc.teamcode.subsystem.Intake;
 import org.firstinspires.ftc.teamcode.subsystem.Shooter;
 import org.firstinspires.ftc.teamcode.subsystem.Transfer;
 import org.firstinspires.ftc.teamcode.subsystem.Webcam;
+import org.firstinspires.ftc.teamcode.subsystem.ff.ShooterFeedforward;
 
+import dev.nextftc.control.ControlSystem;
+import dev.nextftc.control.KineticState;
+import dev.nextftc.control.feedback.PIDCoefficients;
 import dev.nextftc.core.commands.Command;
 import dev.nextftc.core.components.BindingsComponent;
 import dev.nextftc.core.components.SubsystemComponent;
@@ -43,10 +47,16 @@ public class MecanumTest extends NextFTCOpMode {
 
     private TelemetryManager telemetryM;
 
-    private double slowModeStep = 0.25;
+    private final double slowModeStep = 0.25;
 
     private boolean slowMode = false;
     private double slowModeMultiplier = 0.25;
+    private boolean headingLock = false;
+
+    public static PIDCoefficients headingPIDCoefficients = new PIDCoefficients(0, 0, 0.0);
+    private final ControlSystem controlSystem = ControlSystem.builder()
+            .posPid(headingPIDCoefficients)
+            .build();
 
     @Override
     public void onInit() {
@@ -112,15 +122,25 @@ public class MecanumTest extends NextFTCOpMode {
                     Shooter.shooterGoal = 1350;
                     Shooter.shooterAngle = 0.4;
                 });
+
+        Gamepads.gamepad1().circle().toggleOnBecomesTrue()
+                .whenBecomesTrue(() -> headingLock = true)
+                .whenBecomesFalse(() -> headingLock = false);
     }
 
     @Override
     public void onUpdate() {
         telemetryM.update(telemetry);
 
+        if (headingLock && Webcam.INSTANCE.imuTarget != -1) {
+            double power = controlSystem.calculate(new KineticState(imu.get().inDeg-Webcam.INSTANCE.imuTarget,0,0));
+
+        }
+
         telemetryM.addData("slowMode toggle", slowMode);
         telemetryM.addData("slowMode multiplier", slowModeMultiplier);
         telemetryM.addData("loop time", loopTimeTimer.milliseconds());
+        telemetryM.addData("currentHeading", imu.get().inDeg);
         loopTimeTimer.reset();
     }
 }

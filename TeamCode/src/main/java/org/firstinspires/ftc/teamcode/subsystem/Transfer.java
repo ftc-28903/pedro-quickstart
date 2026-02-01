@@ -20,7 +20,7 @@ public class Transfer implements Subsystem {
     public static double detectDist = 120;
     public static double maxMotorSpeed = 0.75;
     public static double maxOverrideSpeed = 1;
-    public static double readDelay = 150;
+    public static double readDelay = 0;
     private Transfer() {}
 
     public ElapsedTime colorGetTimer = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
@@ -30,7 +30,7 @@ public class Transfer implements Subsystem {
     public boolean offOverride = false;
     public final MotorEx motor1 = new MotorEx("transfer1");
     public RevColorSensorV3 colorSensorV3;
-    private ElapsedTime shootTimer = new ElapsedTime();
+    public ElapsedTime lastBallInTimer = new ElapsedTime();
 
     public Command overrideOn = new InstantCommand(() -> override = true);
     public Command spinUpReverse = new InstantCommand(() -> motor1.setPower(-1));
@@ -52,6 +52,10 @@ public class Transfer implements Subsystem {
         if (colorGetTimer.milliseconds() > readDelay) {
             lastDistance = colorSensorV3.getDistance(DistanceUnit.MM);
             colorGetTimer.reset();
+
+            if (lastDistance < 50) {
+                lastBallInTimer.reset();
+            }
         }
 
         ActiveOpMode.telemetry().addData("lastDistance", lastDistance);

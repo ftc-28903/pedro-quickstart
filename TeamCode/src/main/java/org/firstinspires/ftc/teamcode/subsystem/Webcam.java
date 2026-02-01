@@ -39,8 +39,8 @@ public class Webcam implements Subsystem {
     private static final double CAMERA_TILT_DEGREES = 15.0; // Camera tilted upwards
     public static float decimation = 2.0f;
     private TelemetryManager telemetryM;
-    public double imuTarget;
-    public double lastOffset;
+    public double imuTarget = -1;
+    public double lastOffset = -1;
 
     /**
      * Calculates the horizontal distance to an AprilTag, excluding height difference.
@@ -159,6 +159,9 @@ public class Webcam implements Subsystem {
             sb.append(detection.id);
         }
         ActiveOpMode.telemetry().addLine(sb.toString());
+        telemetryM.addData("goalLastOffset", lastOffset);
+        telemetryM.addData("goalIMUTarget", imuTarget);
+        telemetryM.addData("goalIMUOffset", imu.get().inDeg-imuTarget);
     }
 
     public List<AprilTagDetection> getDetectedTags() {

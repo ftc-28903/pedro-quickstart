@@ -10,8 +10,6 @@ import org.firstinspires.ftc.teamcode.subsystem.ff.ShooterFeedforward;
 import dev.nextftc.control.ControlSystem;
 import dev.nextftc.control.KineticState;
 import dev.nextftc.control.feedback.PIDCoefficients;
-import dev.nextftc.control.feedforward.BasicFeedforwardParameters;
-import dev.nextftc.control.feedforward.FeedforwardElement;
 import dev.nextftc.core.commands.Command;
 import dev.nextftc.core.commands.utility.InstantCommand;
 import dev.nextftc.core.subsystems.Subsystem;
@@ -104,7 +102,7 @@ public class Shooter implements Subsystem {
     @Override
     public void initialize() {
         telemetryM = PanelsTelemetry.INSTANCE.getTelemetry();
-        voltageSensor = ActiveOpMode.hardwareMap().get(VoltageSensor.class, "Control Hub");;
+        voltageSensor = ActiveOpMode.hardwareMap().get(VoltageSensor.class, "Control Hub");
     }
 
     @Override

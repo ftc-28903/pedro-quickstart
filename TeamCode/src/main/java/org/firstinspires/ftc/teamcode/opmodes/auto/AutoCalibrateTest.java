@@ -22,7 +22,7 @@ import dev.nextftc.hardware.impl.Direction;
 import dev.nextftc.hardware.impl.IMUEx;
 import dev.nextftc.hardware.impl.MotorEx;
 
-@Autonomous(name = "MecanumTest")
+@Autonomous(name = "AutoCalibrateTest")
 public class AutoCalibrateTest extends NextFTCOpMode {
     public AutoCalibrateTest() {
         addComponents(
