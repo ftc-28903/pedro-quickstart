@@ -52,6 +52,7 @@ public class MecanumTest extends NextFTCOpMode {
     private boolean slowMode = false;
     private double slowModeMultiplier = 0.25;
     private boolean headingLock = false;
+    private double headingLockPower = 0.0;
 
     public static PIDCoefficients headingPIDCoefficients = new PIDCoefficients(0, 0, 0.0);
     private final ControlSystem controlSystem = ControlSystem.builder()
@@ -73,7 +74,7 @@ public class MecanumTest extends NextFTCOpMode {
                 backRightMotor,
                 Gamepads.gamepad1().leftStickY().negate().map(y -> slowMode ? y * slowModeMultiplier : y),
                 Gamepads.gamepad1().leftStickX().map(x -> slowMode ? x * slowModeMultiplier : x),
-                Gamepads.gamepad1().rightStickX().map(x -> slowMode ? x * slowModeMultiplier : x)
+                () -> headingLock ? headingLockPower : Gamepads.gamepad1().rightStickX().map(x -> slowMode ? x * slowModeMultiplier : x).get()
                 //new FieldCentric(imu)
         );
         driverControlled.schedule();
@@ -113,16 +114,6 @@ public class MecanumTest extends NextFTCOpMode {
                 .whenBecomesTrue(() -> Transfer.INSTANCE.offOverrideOn.schedule())
                 .whenBecomesFalse(() -> Transfer.INSTANCE.offOverrideOff.schedule());
 
-        Gamepads.gamepad1().rightBumper()
-                .whenBecomesTrue(() -> {
-                    Shooter.shooterGoal = 1650;
-                    Shooter.shooterAngle = 0.6;
-                })
-                .whenBecomesFalse(() -> {
-                    Shooter.shooterGoal = 1350;
-                    Shooter.shooterAngle = 0.4;
-                });
-
         Gamepads.gamepad1().circle().toggleOnBecomesTrue()
                 .whenBecomesTrue(() -> headingLock = true)
                 .whenBecomesFalse(() -> headingLock = false);
@@ -133,8 +124,8 @@ public class MecanumTest extends NextFTCOpMode {
         telemetryM.update(telemetry);
 
         if (headingLock && Webcam.INSTANCE.imuTarget != -1) {
-            double power = controlSystem.calculate(new KineticState(imu.get().inDeg-Webcam.INSTANCE.imuTarget,0,0));
-
+            controlSystem.setGoal(new KineticState(Webcam.INSTANCE.imuTarget));
+            headingLockPower = controlSystem.calculate(new KineticState(imu.get().inDeg,0,0));
         }
 
         telemetryM.addData("slowMode toggle", slowMode);

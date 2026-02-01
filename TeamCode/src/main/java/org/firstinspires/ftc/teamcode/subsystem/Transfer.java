@@ -24,7 +24,7 @@ public class Transfer implements Subsystem {
     private Transfer() {}
 
     public ElapsedTime colorGetTimer = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
-    public double lastDistance = 9999.9;
+    public double lastDistance = 0.0;
     public boolean override = false;
     public boolean opModeOverride = false;
     public boolean offOverride = false;
