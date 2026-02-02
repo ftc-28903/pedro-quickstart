@@ -31,13 +31,12 @@ public class Shooter implements Subsystem {
     public static double shooterGoal = 1250;
     public static double shooterPowerOverride = 0.1;
     public static double shooterAngle = 0.58;
-    public static PIDCoefficients pidCoefficients = new PIDCoefficients(0.000000005, 0, 0.0);
-    public static double velocityTolerance = 50;
+    public static PIDCoefficients pidCoefficients = new PIDCoefficients(0.008, 0, 0.0);
+    public static double velocityTolerance = 80;
     public static double voltageCalibration = 13.0;
 
 
     private final ControlSystem controlSystem = ControlSystem.builder()
-            .feedforward(new ShooterFeedforward())
             .velSquID(pidCoefficients)
             .build();
 
@@ -105,6 +104,16 @@ public class Shooter implements Subsystem {
         voltageSensor = ActiveOpMode.hardwareMap().get(VoltageSensor.class, "Control Hub");
     }
 
+    private static final double a = 2.824e-10;
+    private static final double b = -7.497e-07;
+    private static final double c = 1.013e-03;
+    private static final double d = -7.218e-02;
+
+    public double calculate(double velo) {
+        double speed = velo + 80; // Your +80 offset
+        return ((a * speed + b) * speed + c) * speed + d;
+    }
+
     @Override
     public void periodic() {
         double batteryVoltage = voltageSensor.getVoltage();
@@ -128,9 +137,9 @@ public class Shooter implements Subsystem {
         }
         servo1.setPosition(shooterAngle);
 
-        double rawPower = controlSystem.calculate(motor1.getState());
+        double rawPower = calculate(shooterGoal) + controlSystem.calculate(new KineticState(Double.MAX_VALUE, shooterGoal, Double.MAX_VALUE));
 
-        double compensatedPower = rawPower * (voltageCalibration / batteryVoltage) + controlSystem.calculate(motor1.getState());
+        double compensatedPower = rawPower * (voltageCalibration / batteryVoltage);
 
         // Prevent clipping explosions
         compensatedPower = Math.max(-1.0, Math.min(1.0, compensatedPower));

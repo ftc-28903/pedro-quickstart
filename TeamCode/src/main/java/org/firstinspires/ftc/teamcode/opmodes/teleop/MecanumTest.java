@@ -1,5 +1,6 @@
 package org.firstinspires.ftc.teamcode.opmodes.teleop;
 
+import com.bylazar.configurables.annotations.Configurable;
 import com.bylazar.telemetry.PanelsTelemetry;
 import com.bylazar.telemetry.TelemetryManager;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
@@ -26,6 +27,7 @@ import dev.nextftc.hardware.impl.Direction;
 import dev.nextftc.hardware.impl.IMUEx;
 import dev.nextftc.hardware.impl.MotorEx;
 
+@Configurable
 @TeleOp(name = "MecanumTest")
 public class MecanumTest extends NextFTCOpMode {
     public MecanumTest() {
@@ -74,7 +76,7 @@ public class MecanumTest extends NextFTCOpMode {
                 backRightMotor,
                 Gamepads.gamepad1().leftStickY().negate().map(y -> slowMode ? y * slowModeMultiplier : y),
                 Gamepads.gamepad1().leftStickX().map(x -> slowMode ? x * slowModeMultiplier : x),
-                () -> headingLock ? headingLockPower : Gamepads.gamepad1().rightStickX().map(x -> slowMode ? x * slowModeMultiplier : x).get()
+                headingLock ? (() -> headingLockPower) : Gamepads.gamepad1().rightStickX().map(x -> slowMode ? x * slowModeMultiplier : x)
                 //new FieldCentric(imu)
         );
         driverControlled.schedule();
