@@ -64,7 +64,7 @@ public class TestOpmode extends NextFTCOpMode {
 
     @Override
     public void onStartButtonPressed() {
-
+        frontLeftMotor.setPower(1);
     }
 
     @Override

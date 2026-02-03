@@ -10,7 +10,6 @@ import org.firstinspires.ftc.teamcode.subsystem.Intake;
 import org.firstinspires.ftc.teamcode.subsystem.Shooter;
 import org.firstinspires.ftc.teamcode.subsystem.Transfer;
 import org.firstinspires.ftc.teamcode.subsystem.Webcam;
-import org.firstinspires.ftc.teamcode.subsystem.ff.ShooterFeedforward;
 
 import dev.nextftc.control.ControlSystem;
 import dev.nextftc.control.KineticState;
@@ -21,7 +20,6 @@ import dev.nextftc.core.components.SubsystemComponent;
 import dev.nextftc.ftc.Gamepads;
 import dev.nextftc.ftc.NextFTCOpMode;
 import dev.nextftc.ftc.components.BulkReadComponent;
-import dev.nextftc.hardware.driving.FieldCentric;
 import dev.nextftc.hardware.driving.MecanumDriverControlled;
 import dev.nextftc.hardware.impl.Direction;
 import dev.nextftc.hardware.impl.IMUEx;
@@ -42,10 +40,10 @@ public class MecanumTest extends NextFTCOpMode {
 
     private final ElapsedTime loopTimeTimer = new ElapsedTime();
 
-    private final MotorEx frontLeftMotor = new MotorEx("front_left");
-    private final MotorEx frontRightMotor = new MotorEx("front_right").reversed();
-    private final MotorEx backLeftMotor = new MotorEx("back_left");
-    private final MotorEx backRightMotor = new MotorEx("back_right").reversed();
+    private final MotorEx frontLeftMotor = new MotorEx("front_left").brakeMode();
+    private final MotorEx frontRightMotor = new MotorEx("front_right").reversed().brakeMode();
+    private final MotorEx backLeftMotor = new MotorEx("back_left").brakeMode();
+    private final MotorEx backRightMotor = new MotorEx("back_right").reversed().brakeMode();
 
     private TelemetryManager telemetryM;
 
@@ -56,7 +54,7 @@ public class MecanumTest extends NextFTCOpMode {
     private boolean headingLock = false;
     private double headingLockPower = 0.0;
 
-    public static PIDCoefficients headingPIDCoefficients = new PIDCoefficients(0, 0, 0.0);
+    public static PIDCoefficients headingPIDCoefficients = new PIDCoefficients(0.03, 0, 0.0);
     private final ControlSystem controlSystem = ControlSystem.builder()
             .posPid(headingPIDCoefficients)
             .build();
@@ -76,7 +74,9 @@ public class MecanumTest extends NextFTCOpMode {
                 backRightMotor,
                 Gamepads.gamepad1().leftStickY().negate().map(y -> slowMode ? y * slowModeMultiplier : y),
                 Gamepads.gamepad1().leftStickX().map(x -> slowMode ? x * slowModeMultiplier : x),
-                headingLock ? (() -> headingLockPower) : Gamepads.gamepad1().rightStickX().map(x -> slowMode ? x * slowModeMultiplier : x)
+                Gamepads.gamepad1().rightStickX().map(x -> (
+                        headingLock ? headingLockPower : (slowMode ? x * slowModeMultiplier : x)
+                        ))
                 //new FieldCentric(imu)
         );
         driverControlled.schedule();
@@ -116,7 +116,7 @@ public class MecanumTest extends NextFTCOpMode {
                 .whenBecomesTrue(() -> Transfer.INSTANCE.offOverrideOn.schedule())
                 .whenBecomesFalse(() -> Transfer.INSTANCE.offOverrideOff.schedule());
 
-        Gamepads.gamepad1().circle().toggleOnBecomesTrue()
+        Gamepads.gamepad1().circle()
                 .whenBecomesTrue(() -> headingLock = true)
                 .whenBecomesFalse(() -> headingLock = false);
     }
@@ -125,12 +125,13 @@ public class MecanumTest extends NextFTCOpMode {
     public void onUpdate() {
         telemetryM.update(telemetry);
 
-        if (headingLock && Webcam.INSTANCE.imuTarget != -1) {
-            controlSystem.setGoal(new KineticState(Webcam.INSTANCE.imuTarget));
-            headingLockPower = controlSystem.calculate(new KineticState(imu.get().inDeg,0,0));
-        }
+        double offset = Webcam.INSTANCE.lastOffset;
+        controlSystem.setGoal(new KineticState(0));
+        headingLockPower = controlSystem.calculate(
+                new KineticState(offset, Double.MAX_VALUE, Double.MAX_VALUE)
+        );
 
-        telemetryM.addData("slowMode toggle", slowMode);
+        //telemetryM.addData("slowMode toggle", slowMode);
         telemetryM.addData("slowMode multiplier", slowModeMultiplier);
         telemetryM.addData("loop time", loopTimeTimer.milliseconds());
         telemetryM.addData("currentHeading", imu.get().inDeg);

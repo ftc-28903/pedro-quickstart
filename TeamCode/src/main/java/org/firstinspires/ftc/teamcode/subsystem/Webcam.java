@@ -39,8 +39,9 @@ public class Webcam implements Subsystem {
     private static final double CAMERA_TILT_DEGREES = 15.0; // Camera tilted upwards
     public static float decimation = 2.0f;
     private TelemetryManager telemetryM;
-    public double imuTarget = -1;
-    public double lastOffset = -1;
+    public double imuTarget = 0;
+    public double lastOffset = 0;
+    public double imuOffset = 0;
 
     /**
      * Calculates the horizontal distance to an AprilTag, excluding height difference.
@@ -107,8 +108,8 @@ public class Webcam implements Subsystem {
 
         double tagYawRad = Math.toRadians(detection.ftcPose.yaw);
 
-        double backX = -46 * Math.sin(tagYawRad);
-        double backY = -46 * Math.cos(tagYawRad);
+        double backX = 40 * Math.sin(tagYawRad);
+        double backY = 40 * Math.cos(tagYawRad);
 
         double targetX = x_tag + backX;
         double targetY = y_tag + backY;
@@ -137,8 +138,15 @@ public class Webcam implements Subsystem {
 
         visionPortal = builder.build();
 
-        setManualExposure(2, 100);
+        setManualExposure(1, 100);
     }
+
+    private double angleWrap(double angle) {
+        while (angle > 180) angle -= 360;
+        while (angle < -180) angle += 360;
+        return angle;
+    }
+
 
     @Override
     public void periodic() {
@@ -149,7 +157,7 @@ public class Webcam implements Subsystem {
         if(allianceTag != null && allianceTag.metadata != null) {
             lastDistanceComponent = getDistanceComponents(allianceTag);
             lastOffset = getTurnToBackOfTag(allianceTag);
-            imuTarget = imu.get().inDeg + lastOffset;
+            imuTarget = imu.get().inDeg - lastOffset;
         }
 
         displayDetectionTelemetry(allianceTag);
@@ -161,7 +169,8 @@ public class Webcam implements Subsystem {
         ActiveOpMode.telemetry().addLine(sb.toString());
         telemetryM.addData("goalLastOffset", lastOffset);
         telemetryM.addData("goalIMUTarget", imuTarget);
-        telemetryM.addData("goalIMUOffset", imu.get().inDeg-imuTarget);
+        imuOffset = angleWrap(imu.get().inDeg - imuTarget);
+        telemetryM.addData("goalIMUOffset", imuOffset);
     }
 
     public List<AprilTagDetection> getDetectedTags() {
