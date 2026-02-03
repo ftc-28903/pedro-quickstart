@@ -43,6 +43,11 @@ public class Webcam implements Subsystem {
     public double lastOffset = 0;
     public double imuOffset = 0;
 
+    // abs heading
+    private double continuousHeading = 0;
+    private double lastImuAngle = 0;
+    private boolean firstHeadingUpdate = true;
+
     /**
      * Calculates the horizontal distance to an AprilTag, excluding height difference.
      * Takes into account the camera's upward tilt.
@@ -117,6 +122,26 @@ public class Webcam implements Subsystem {
         return Math.toDegrees(Math.atan2(targetX, targetY));
     }
 
+    public void updateContinuousHeading() {
+        double current = imu.get().inDeg;
+
+        if (firstHeadingUpdate) {
+            lastImuAngle = current;
+            continuousHeading = current;
+            firstHeadingUpdate = false;
+            return;
+        }
+
+        double delta = current - lastImuAngle;
+
+        // Detect wrap crossing
+        if (delta > 180) delta -= 360;
+        if (delta < -180) delta += 360;
+
+        continuousHeading += delta;
+        lastImuAngle = current;
+    }
+
     public void init() {
         telemetryM = PanelsTelemetry.INSTANCE.getTelemetry();
 
@@ -141,15 +166,9 @@ public class Webcam implements Subsystem {
         setManualExposure(1, 100);
     }
 
-    private double angleWrap(double angle) {
-        while (angle > 180) angle -= 360;
-        while (angle < -180) angle += 360;
-        return angle;
-    }
-
-
     @Override
     public void periodic() {
+        updateContinuousHeading();
         aprilTagProcessor.setDecimation(decimation);
         detectedTags = aprilTagProcessor.getDetections();
 
@@ -157,7 +176,7 @@ public class Webcam implements Subsystem {
         if(allianceTag != null && allianceTag.metadata != null) {
             lastDistanceComponent = getDistanceComponents(allianceTag);
             lastOffset = getTurnToBackOfTag(allianceTag);
-            imuTarget = imu.get().inDeg - lastOffset;
+            imuTarget = continuousHeading - lastOffset;
         }
 
         displayDetectionTelemetry(allianceTag);
@@ -169,7 +188,7 @@ public class Webcam implements Subsystem {
         ActiveOpMode.telemetry().addLine(sb.toString());
         telemetryM.addData("goalLastOffset", lastOffset);
         telemetryM.addData("goalIMUTarget", imuTarget);
-        imuOffset = angleWrap(imu.get().inDeg - imuTarget);
+        imuOffset = continuousHeading - imuTarget;
         telemetryM.addData("goalIMUOffset", imuOffset);
     }
 

@@ -125,7 +125,7 @@ public class MecanumTest extends NextFTCOpMode {
     public void onUpdate() {
         telemetryM.update(telemetry);
 
-        double offset = Webcam.INSTANCE.lastOffset;
+        double offset = Webcam.INSTANCE.imuOffset;
         controlSystem.setGoal(new KineticState(0));
         headingLockPower = controlSystem.calculate(
                 new KineticState(offset, Double.MAX_VALUE, Double.MAX_VALUE)
