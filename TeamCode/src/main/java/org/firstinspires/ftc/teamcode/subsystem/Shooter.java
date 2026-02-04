@@ -11,6 +11,7 @@ import dev.nextftc.control.ControlSystem;
 import dev.nextftc.control.KineticState;
 import dev.nextftc.control.feedback.PIDCoefficients;
 import dev.nextftc.core.commands.Command;
+import dev.nextftc.core.commands.delays.WaitUntil;
 import dev.nextftc.core.commands.utility.InstantCommand;
 import dev.nextftc.core.subsystems.Subsystem;
 import dev.nextftc.ftc.ActiveOpMode;
@@ -35,7 +36,6 @@ public class Shooter implements Subsystem {
     public static double velocityTolerance = 120;
     public static double voltageCalibration = 13.0;
 
-
     private final ControlSystem controlSystem = ControlSystem.builder()
             .velSquID(pidCoefficients)
             .build();
@@ -49,6 +49,7 @@ public class Shooter implements Subsystem {
         shouldStop = true;
         //motor.setPower(0);
     });
+    public Command waitForSpeed = new WaitUntil(this::isSpeedGood);
 
     // ticksPerSecond = RPM x 28 / 60
     public double ticksToRPM(double ticksPerSecond, double countsPerRevolution) {

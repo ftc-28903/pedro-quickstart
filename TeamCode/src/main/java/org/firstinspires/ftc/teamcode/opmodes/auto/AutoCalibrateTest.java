@@ -36,10 +36,10 @@ public class AutoCalibrateTest extends NextFTCOpMode {
 
     private final ElapsedTime loopTimeTimer = new ElapsedTime();
 
-    private final MotorEx frontLeftMotor = new MotorEx("front_left");
-    private final MotorEx frontRightMotor = new MotorEx("front_right").reversed();
-    private final MotorEx backLeftMotor = new MotorEx("back_left");
-    private final MotorEx backRightMotor = new MotorEx("back_right").reversed();
+    private final MotorEx frontLeftMotor = new MotorEx("front_left").brakeMode();
+    private final MotorEx frontRightMotor = new MotorEx("front_right").reversed().brakeMode();
+    private final MotorEx backLeftMotor = new MotorEx("back_left").brakeMode();
+    private final MotorEx backRightMotor = new MotorEx("back_right").reversed().brakeMode();
 
     private TelemetryManager telemetryM;
 
@@ -52,6 +52,8 @@ public class AutoCalibrateTest extends NextFTCOpMode {
 
     private ElapsedTime timer1 = new ElapsedTime();
     private ElapsedTime timer2 = new ElapsedTime();
+
+    private TestAutoFactory testAutoFactory;
 
     private int state = 1;
 
@@ -66,48 +68,24 @@ public class AutoCalibrateTest extends NextFTCOpMode {
     public void onInit() {
         telemetryM = PanelsTelemetry.INSTANCE.getTelemetry();
         Webcam.INSTANCE.init();
+
+        testAutoFactory = new TestAutoFactory(frontLeftMotor, frontRightMotor, backLeftMotor, backRightMotor, imu);
     }
 
     @Override
     public void onStartButtonPressed() {
-        beginPos = backRightMotor.getCurrentPosition();
-        timer1.reset();
-        timer2.reset();
-        Shooter.INSTANCE.spinUp.schedule();
+        imu.zero();
+        testAutoFactory.getAutoGroup().schedule();
     }
 
     @Override
     public void onUpdate() {
         telemetryM.update(telemetry);
-        double backRightPosDiff = Math.abs(beginPos-backRightMotor.getCurrentPosition());
+        testAutoFactory.loop();
 
-        switch (state) {
-            case 1:
-                if (timer1.milliseconds() > 3000) {
-                    runAllMotors(-0.5,-0.5,-0.5,-0.5);
-                    Intake.INSTANCE.spinUp.schedule();
-                    state = 2;
-                }
-            case 2:
-                if (backRightPosDiff >= 1685) {
-                    runAllMotors(0,0,0,0);
-                    state = 3;
-                    Intake.INSTANCE.spinUp.schedule();
-                    Transfer.INSTANCE.opModeOverrideOn.schedule();
-                    timer1.reset();
-                }
-            case 3:
-                if (timer1.milliseconds() > 4000) {
-                    Intake.INSTANCE.spinDown.schedule();
-                    Transfer.INSTANCE.opModeOverrideOff.schedule();
-                    Shooter.INSTANCE.spinDown.schedule();
-                }
-        }
 
-        telemetryM.addData("slowMode toggle", slowMode);
-        telemetryM.addData("slowMode multiplier", slowModeMultiplier);
-        telemetryM.addData("loop time", loopTimeTimer.milliseconds());
-        telemetryM.addData("backRightPos", beginPos-backRightMotor.getCurrentPosition());
+
+        telemetryM.addData("backRightPos", backRightMotor.getCurrentPosition());
         loopTimeTimer.reset();
     }
 }
