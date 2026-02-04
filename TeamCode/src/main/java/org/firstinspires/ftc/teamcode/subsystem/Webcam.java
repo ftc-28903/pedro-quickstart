@@ -113,8 +113,8 @@ public class Webcam implements Subsystem {
 
         double tagYawRad = Math.toRadians(detection.ftcPose.yaw);
 
-        double backX = 40 * Math.sin(tagYawRad);
-        double backY = 40 * Math.cos(tagYawRad);
+        double backX = 0 * Math.sin(tagYawRad);
+        double backY = 0 * Math.cos(tagYawRad);
 
         double targetX = x_tag + backX;
         double targetY = y_tag + backY;
@@ -163,7 +163,7 @@ public class Webcam implements Subsystem {
 
         visionPortal = builder.build();
 
-        setManualExposure(1, 100);
+        setManualExposure(2, 100);
     }
 
     @Override

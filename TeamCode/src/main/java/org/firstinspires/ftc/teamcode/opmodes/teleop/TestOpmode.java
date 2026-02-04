@@ -31,7 +31,8 @@ import dev.nextftc.hardware.impl.MotorEx;
 public class TestOpmode extends NextFTCOpMode {
     public TestOpmode() {
         addComponents(
-                BulkReadComponent.INSTANCE
+                BulkReadComponent.INSTANCE,
+                BindingsComponent.INSTANCE
         );
     }
 
@@ -64,7 +65,7 @@ public class TestOpmode extends NextFTCOpMode {
 
     @Override
     public void onStartButtonPressed() {
-        frontLeftMotor.setPower(1);
+
     }
 
     @Override
@@ -73,5 +74,6 @@ public class TestOpmode extends NextFTCOpMode {
         ActiveOpMode.telemetry().addData("frontRight", frontRightMotor.getCurrentPosition());
         ActiveOpMode.telemetry().addData("backLeft", backLeftMotor.getCurrentPosition());
         ActiveOpMode.telemetry().addData("backRight", backRightMotor.getCurrentPosition());
+        ActiveOpMode.telemetry().update();
     }
 }

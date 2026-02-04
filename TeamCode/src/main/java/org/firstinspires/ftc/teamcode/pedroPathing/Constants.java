@@ -32,12 +32,11 @@ public class Constants {
             .leftFrontMotorName("front_left")
             .leftFrontEncoderDirection(Encoder.FORWARD)
             .leftRearEncoderDirection(Encoder.FORWARD)
-            .rightFrontEncoderDirection(Encoder.FORWARD)
-            .rightRearEncoderDirection(Encoder.FORWARD)
-            .robotWidth(15.67) // in inches // 37.8cm or 41.8cm?
-            .robotLength(11.4) // in inches
-            .forwardTicksToInches(0.64)
-            .turnTicksToInches(0.4);
+            .rightFrontEncoderDirection(Encoder.REVERSE)
+            .rightRearEncoderDirection(Encoder.REVERSE)
+            .robotWidth(14.96) // in inches // 37.8cm or 41.8cm?
+            .robotLength(11.81);
+        // in inches
 
     public static PathConstraints pathConstraints = new PathConstraints(0.99, 100, 1, 1);
 
