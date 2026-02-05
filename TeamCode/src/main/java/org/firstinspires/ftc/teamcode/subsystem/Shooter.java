@@ -33,7 +33,7 @@ public class Shooter implements Subsystem {
     public static double shooterPowerOverride = 0.1;
     public static double shooterAngle = 0.58;
     public static PIDCoefficients pidCoefficients = new PIDCoefficients(0.008, 0, 0.0);
-    public static double velocityTolerance = 120;
+    public static double velocityTolerance = 100;
     public static double voltageCalibration = 13.0;
 
     private final ControlSystem controlSystem = ControlSystem.builder()
@@ -98,7 +98,7 @@ public class Shooter implements Subsystem {
 
         double result = m*x+b;
         if (x > 270) {
-            return result+25;
+            return result+20;
         } else {
             return result;
         }

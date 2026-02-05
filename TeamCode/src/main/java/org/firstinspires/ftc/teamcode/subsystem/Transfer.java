@@ -17,7 +17,7 @@ import dev.nextftc.hardware.impl.MotorEx;
 @Configurable
 public class Transfer implements Subsystem {
     public static final Transfer INSTANCE = new Transfer();
-    public static double detectDist = 80;
+    public static double detectDist = 120;
     public static double maxMotorSpeed = 0.75;
     public static double maxOverrideSpeed = 1;
     public static double readDelay = 0;

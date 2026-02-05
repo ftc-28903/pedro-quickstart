@@ -69,13 +69,18 @@ public class AutoCalibrateTest extends NextFTCOpMode {
         telemetryM = PanelsTelemetry.INSTANCE.getTelemetry();
         Webcam.INSTANCE.init();
 
+        imu.zero();
+        Intake.INSTANCE.spinDown.schedule();
+        Transfer.INSTANCE.opModeOverrideOff.schedule();
+        Transfer.INSTANCE.overrideOff.schedule();
+        Shooter.INSTANCE.spinDown.schedule();
         testAutoFactory = new TestAutoFactory(frontLeftMotor, frontRightMotor, backLeftMotor, backRightMotor, imu);
     }
 
     @Override
     public void onStartButtonPressed() {
         imu.zero();
-        testAutoFactory.getAutoGroup().schedule();
+        testAutoFactory.getFarzoneGroup().schedule();
     }
 
     @Override
@@ -83,9 +88,14 @@ public class AutoCalibrateTest extends NextFTCOpMode {
         telemetryM.update(telemetry);
         testAutoFactory.loop();
 
+        if (testAutoFactory.state == 1) {
+            testAutoFactory.getGroup2().schedule();
+            testAutoFactory.state = 2;
+        }
 
 
         telemetryM.addData("backRightPos", backRightMotor.getCurrentPosition());
+        telemetryM.addData("imuDeg", imu.get().inDeg);
         loopTimeTimer.reset();
     }
 }

@@ -26,6 +26,7 @@ import dev.nextftc.hardware.driving.MecanumDriverControlled;
 import dev.nextftc.hardware.impl.Direction;
 import dev.nextftc.hardware.impl.IMUEx;
 import dev.nextftc.hardware.impl.MotorEx;
+import dev.nextftc.hardware.impl.ServoEx;
 
 @TeleOp(name = "TestOpmode")
 public class TestOpmode extends NextFTCOpMode {
@@ -45,6 +46,8 @@ public class TestOpmode extends NextFTCOpMode {
     private final MotorEx backLeftMotor = new MotorEx("back_left");
     private final MotorEx backRightMotor = new MotorEx("back_right").reversed();
 
+    private final ServoEx hood1 = new ServoEx("hood1");
+
     private TelemetryManager telemetryM;
 
     private final double slowModeStep = 0.25;
@@ -61,6 +64,7 @@ public class TestOpmode extends NextFTCOpMode {
 
     @Override
     public void onInit() {
+
     }
 
     @Override
@@ -75,5 +79,7 @@ public class TestOpmode extends NextFTCOpMode {
         ActiveOpMode.telemetry().addData("backLeft", backLeftMotor.getCurrentPosition());
         ActiveOpMode.telemetry().addData("backRight", backRightMotor.getCurrentPosition());
         ActiveOpMode.telemetry().update();
+
+        hood1.setPosition(1);
     }
 }

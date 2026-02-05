@@ -5,6 +5,7 @@ import com.bylazar.configurables.annotations.Configurable;
 import org.firstinspires.ftc.teamcode.subsystem.Intake;
 import org.firstinspires.ftc.teamcode.subsystem.Shooter;
 import org.firstinspires.ftc.teamcode.subsystem.Transfer;
+import org.firstinspires.ftc.teamcode.subsystem.Webcam;
 
 import dev.nextftc.control.ControlSystem;
 import dev.nextftc.control.KineticState;
@@ -15,6 +16,7 @@ import dev.nextftc.core.commands.delays.WaitUntil;
 import dev.nextftc.core.commands.groups.CommandGroup;
 import dev.nextftc.core.commands.groups.SequentialGroup;
 import dev.nextftc.core.commands.utility.InstantCommand;
+import dev.nextftc.ftc.ActiveOpMode;
 import dev.nextftc.hardware.impl.IMUEx;
 import dev.nextftc.hardware.impl.MotorEx;
 
@@ -29,6 +31,8 @@ public class TestAutoFactory {
     private double continuousHeading = 0;
     private double lastImuAngle = 0;
     private boolean firstHeadingUpdate = true;
+
+    public int state = 0;
 
     // For strafing, we'll track the "average" position of relevant motors
     private double lastStrafePosition = 0;
@@ -49,7 +53,7 @@ public class TestAutoFactory {
             .basicFF(strafeFeedforwardParameters)
             .build();
 
-    public static PIDCoefficients headingPIDCoefficients = new PIDCoefficients(0.03, 0, 0.0);
+    public static PIDCoefficients headingPIDCoefficients = new PIDCoefficients(0.033, 0, 0.0);
     public static BasicFeedforwardParameters headingFeedforwardParameters = new BasicFeedforwardParameters(0,0,0);
     private ControlSystem headingPID = ControlSystem.builder()
             .posPid(headingPIDCoefficients)
@@ -79,7 +83,7 @@ public class TestAutoFactory {
         // - Strafing left: frontLeft and backRight go backward, frontRight and backLeft go forward
 
         // Using average of two opposing wheels that move together during strafing
-        return (frontRightMotor.getCurrentPosition() - backLeftMotor.getCurrentPosition()) / 2.0;
+        return (frontRightMotor.getCurrentPosition() + backLeftMotor.getCurrentPosition()) / 2.0;
     }
 
     public void resetStrafePosition() {
@@ -87,30 +91,35 @@ public class TestAutoFactory {
         firstStrafeUpdate = true;
     }
 
-    public CommandGroup straight(double dist) {
-        double backRightPos = backRightMotor.getCurrentPosition();
-        double targetDist = backRightPos + dist;
+    double backRightPos;
+    double targetDist;
 
-        // Set the goal for the PID controller
-        drivePID.setGoal(new KineticState(targetDist, 0, 0));
-
-        // Reset the PID controller (important for clean state)
-        drivePID.reset();
-
+    public CommandGroup straight(double dist, double maxPower) {
         // Create a command that runs the PID control loop
         return new SequentialGroup(
+                new InstantCommand(() -> {
+                    targetDist = backRightMotor.getCurrentPosition() + dist;
+
+                    // Set the goal for the PID controller
+                    drivePID.setGoal(new KineticState(targetDist, 0, 0));
+
+                    // Reset the PID controller (important for clean state)
+                    drivePID.reset();
+                }),
+                new Delay(0.1),
                 new WaitUntil(() -> {
                     // Get current position
                     double currentPos = backRightMotor.getCurrentPosition();
 
                     // Calculate PID output based on current position
                     double pidOutput = drivePID.calculate(new KineticState(currentPos));
+                    pidOutput = Math.max(-maxPower, Math.min(maxPower, pidOutput));
 
                     // Apply the PID output to all motors
                     runAllMotors(pidOutput, pidOutput, pidOutput, pidOutput);
 
                     // Check if we've reached the target within tolerance
-                    double tolerance = 10.0; // encoder ticks tolerance
+                    double tolerance = 5.0; // encoder ticks tolerance
                     return Math.abs(currentPos - targetDist) <= tolerance;
                 }),
                 new InstantCommand(() -> runAllMotors(0, 0, 0, 0))
@@ -168,13 +177,15 @@ public class TestAutoFactory {
     }
 
     public CommandGroup turnTo(double targetHeadingDegrees) {
-        // Reset heading PID
-        headingPID.reset();
-
-        // Set the target heading
-        headingPID.setGoal(new KineticState(targetHeadingDegrees, 0, 0));
-
         return new SequentialGroup(
+                new InstantCommand(() -> {
+                    // Reset heading PID
+                    headingPID.reset();
+
+                    // Set the target heading
+                    headingPID.setGoal(new KineticState(targetHeadingDegrees, 0, 0));
+                }),
+                new Delay(0.1),
                 new WaitUntil(() -> {
                     // Get current heading
                     double currentHeading = getCurrentHeading();
@@ -191,15 +202,11 @@ public class TestAutoFactory {
                     );
 
                     // Check if we're within tolerance (2 degrees by default)
-                    double headingTolerance = 2.0; // degrees
+                    double headingTolerance = 0.0; // degrees
                     double headingError = Math.abs(currentHeading - targetHeadingDegrees);
+                    ActiveOpMode.telemetry().addData("error", headingError);
 
-                    // Normalize the error to handle angle wrapping
-                    if (headingError > 180) {
-                        headingError = 360 - headingError;
-                    }
-
-                    return headingError <= headingTolerance;
+                    return Math.abs(headingCorrection) <= 0.1;
                 }),
                 new InstantCommand(() -> runAllMotors(0, 0, 0, 0))
         );
@@ -258,11 +265,77 @@ public class TestAutoFactory {
         updateContinuousHeading();
     }
 
+    public CommandGroup getCalibGroup() {
+        return new SequentialGroup(
+                turnTo(100)
+        );
+    }
+
+    public CommandGroup getTestGroup() {
+        return new SequentialGroup(
+                Shooter.INSTANCE.spinUp,
+                Intake.INSTANCE.spinUp,
+                straight(-2040, 0.5),
+                new Delay(1),
+                turnTo(Webcam.INSTANCE.imuTarget),
+                Transfer.INSTANCE.opModeOverrideOn,
+                new Delay(3),
+                Transfer.INSTANCE.opModeOverrideOff,
+                turnTo(33),
+                straight(1550,0.6),
+                new Delay(1),
+                straight(-1550,0.6),
+                turnTo(0),
+                turnTo(Webcam.INSTANCE.imuTarget),
+                Transfer.INSTANCE.opModeOverrideOn,
+                new Delay(3),
+                Transfer.INSTANCE.opModeOverrideOff,
+                turnTo(90),
+                straight(700,1),
+                //strafeLeft(50),
+
+
+                Shooter.INSTANCE.spinDown,
+                Intake.INSTANCE.spinDown
+                //turnTo(-54)
+        );
+    }
+
+    public CommandGroup getFarzoneGroup() {
+        return new SequentialGroup(
+            Shooter.INSTANCE.spinUp,
+                Intake.INSTANCE.spinUp,
+                turnTo(22),
+                new Delay(2),
+                //turnTo(Webcam.INSTANCE.imuTarget),
+                Transfer.INSTANCE.opModeOverrideOn,
+                new Delay(5),
+                Transfer.INSTANCE.opModeOverrideOff,
+                turnTo(90),
+                straight(1350, 0.5),
+                new Delay(5),
+                straight(-1450, 0.5),
+                turnTo(30),
+                Transfer.INSTANCE.opModeOverrideOn,
+                new Delay(5),
+                Transfer.INSTANCE.opModeOverrideOff,
+                Shooter.INSTANCE.spinDown,
+                Intake.INSTANCE.spinDown
+        );
+    }
+
+    public CommandGroup getGroup2() {
+        return new SequentialGroup(
+
+                //turnTo(-54)
+        );
+    }
+
     public CommandGroup getAutoGroup() {
         return new SequentialGroup(
                 Shooter.INSTANCE.spinUp,
                 Intake.INSTANCE.spinUp,
-                straight(-100),
+                straight(-100, 0.6),
                 Shooter.INSTANCE.waitForSpeed,
                 // shoot preload
                 Transfer.INSTANCE.opModeOverrideOn,
@@ -271,8 +344,8 @@ public class TestAutoFactory {
 
                 // 1st line intake
                 turnTo(-55),
-                straight(100),
-                straight(-100),
+                straight(100, 0.6),
+                straight(-100, 0.6),
 
                 // 1st line shoot
                 turnTo(0),
@@ -283,8 +356,8 @@ public class TestAutoFactory {
                 // 2nd line intake
                 turnTo(-52),
                 strafeLeft(50),
-                straight(120),
-                straight(-120),
+                straight(120, 0.6),
+                straight(-120, 0.6),
                 strafeRight(-50),
 
                 // 2nd line shoot
