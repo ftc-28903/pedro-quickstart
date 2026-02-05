@@ -70,15 +70,19 @@ public class AutoCalibrateTest extends NextFTCOpMode {
         Webcam.INSTANCE.init();
 
         imu.zero();
-        Intake.INSTANCE.spinDown.schedule();
-        Transfer.INSTANCE.opModeOverrideOff.schedule();
-        Transfer.INSTANCE.overrideOff.schedule();
-        Shooter.INSTANCE.spinDown.schedule();
         testAutoFactory = new TestAutoFactory(frontLeftMotor, frontRightMotor, backLeftMotor, backRightMotor, imu);
+
+        Intake.INSTANCE.spinDown.schedule();
+        Shooter.INSTANCE.spinDown.schedule();
+        Transfer.INSTANCE.overrideOff.schedule();
+        Transfer.INSTANCE.opModeOverrideOff.schedule();
+
+        Transfer.INSTANCE.offOverrideOn.schedule();
     }
 
     @Override
     public void onStartButtonPressed() {
+        Transfer.INSTANCE.offOverrideOff.schedule();
         imu.zero();
         testAutoFactory.getFarzoneGroup().schedule();
     }

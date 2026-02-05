@@ -63,10 +63,18 @@ public class MecanumTest extends NextFTCOpMode {
     public void onInit() {
         telemetryM = PanelsTelemetry.INSTANCE.getTelemetry();
         Webcam.INSTANCE.init();
+
+        Intake.INSTANCE.spinDown.schedule();
+        Shooter.INSTANCE.spinDown.schedule();
+        Transfer.INSTANCE.overrideOff.schedule();
+        Transfer.INSTANCE.opModeOverrideOff.schedule();
+
+        Transfer.INSTANCE.offOverrideOn.schedule();
     }
 
     @Override
     public void onStartButtonPressed() {
+        Transfer.INSTANCE.offOverrideOff.schedule();
         Command driverControlled = new MecanumDriverControlled(
             frontLeftMotor,
                 frontRightMotor,
