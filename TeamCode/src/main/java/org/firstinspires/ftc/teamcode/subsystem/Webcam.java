@@ -13,6 +13,8 @@ import org.firstinspires.ftc.robotcore.external.hardware.camera.controls.Exposur
 import org.firstinspires.ftc.robotcore.external.hardware.camera.controls.GainControl;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
+import org.firstinspires.ftc.teamcode.utils.AllianceColor;
+import org.firstinspires.ftc.teamcode.utils.AutoStorage;
 import org.firstinspires.ftc.vision.VisionPortal;
 import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
 import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
@@ -172,7 +174,13 @@ public class Webcam implements Subsystem {
         aprilTagProcessor.setDecimation(decimation);
         detectedTags = aprilTagProcessor.getDetections();
 
-        AprilTagDetection allianceTag = getTagBySpecificId(20);
+        AprilTagDetection allianceTag = null;
+        if (AutoStorage.allianceColor == AllianceColor.BLUE) {
+            allianceTag = getTagBySpecificId(20);
+        } else if (AutoStorage.allianceColor == AllianceColor.RED) {
+            allianceTag = getTagBySpecificId(24);
+        }
+
         if(allianceTag != null && allianceTag.metadata != null) {
             lastDistanceComponent = getDistanceComponents(allianceTag);
             lastOffset = getTurnToBackOfTag(allianceTag);

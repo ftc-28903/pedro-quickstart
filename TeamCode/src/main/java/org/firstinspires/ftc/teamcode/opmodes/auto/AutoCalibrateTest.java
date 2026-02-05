@@ -42,27 +42,7 @@ public class AutoCalibrateTest extends NextFTCOpMode {
     private final MotorEx backRightMotor = new MotorEx("back_right").reversed().brakeMode();
 
     private TelemetryManager telemetryM;
-
-    private double slowModeStep = 0.25;
-
-    private boolean slowMode = false;
-    private double slowModeMultiplier = 0.25;
-
-    private double beginPos = backRightMotor.getCurrentPosition();
-
-    private ElapsedTime timer1 = new ElapsedTime();
-    private ElapsedTime timer2 = new ElapsedTime();
-
     private TestAutoFactory testAutoFactory;
-
-    private int state = 1;
-
-    public void runAllMotors(double fl, double fr, double bl, double br) {
-        frontLeftMotor.setPower(fl);
-        frontRightMotor.setPower(fr);
-        backLeftMotor.setPower(bl);
-        backRightMotor.setPower(br);
-    }
 
     @Override
     public void onInit() {
@@ -91,12 +71,6 @@ public class AutoCalibrateTest extends NextFTCOpMode {
     public void onUpdate() {
         telemetryM.update(telemetry);
         testAutoFactory.loop();
-
-        if (testAutoFactory.state == 1) {
-            testAutoFactory.getGroup2().schedule();
-            testAutoFactory.state = 2;
-        }
-
 
         telemetryM.addData("backRightPos", backRightMotor.getCurrentPosition());
         telemetryM.addData("imuDeg", imu.get().inDeg);

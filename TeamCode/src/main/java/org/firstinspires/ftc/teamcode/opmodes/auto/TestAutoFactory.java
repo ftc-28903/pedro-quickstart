@@ -32,8 +32,6 @@ public class TestAutoFactory {
     private double lastImuAngle = 0;
     private boolean firstHeadingUpdate = true;
 
-    public int state = 0;
-
     // For strafing, we'll track the "average" position of relevant motors
     private double lastStrafePosition = 0;
     private boolean firstStrafeUpdate = true;
@@ -75,6 +73,13 @@ public class TestAutoFactory {
         backRightMotor.setPower(br);
     }
 
+    public double getForwardPosition() {
+        return (
+                backLeftMotor.getCurrentPosition() +
+                        backRightMotor.getCurrentPosition()
+        ) / 2.0;
+    }
+
     public double getStrafePosition() {
         // For strafing with mecanum wheels, we can use the average of front right and back left motors
         // or front left and back right, depending on your strafe direction convention
@@ -91,37 +96,30 @@ public class TestAutoFactory {
         firstStrafeUpdate = true;
     }
 
-    double backRightPos;
     double targetDist;
 
     public CommandGroup straight(double dist, double maxPower) {
-        // Create a command that runs the PID control loop
         return new SequentialGroup(
                 new InstantCommand(() -> {
-                    targetDist = backRightMotor.getCurrentPosition() + dist;
+                    double startPos = getForwardPosition();
+                    targetDist = startPos + dist;
 
-                    // Set the goal for the PID controller
-                    drivePID.setGoal(new KineticState(targetDist, 0, 0));
-
-                    // Reset the PID controller (important for clean state)
                     drivePID.reset();
+                    drivePID.setGoal(new KineticState(targetDist, 0, 0));
                 }),
-                new Delay(0.1),
-                new WaitUntil(() -> {
-                    // Get current position
-                    double currentPos = backRightMotor.getCurrentPosition();
 
-                    // Calculate PID output based on current position
+                new WaitUntil(() -> {
+                    double currentPos = getForwardPosition();
+
                     double pidOutput = drivePID.calculate(new KineticState(currentPos));
                     pidOutput = Math.max(-maxPower, Math.min(maxPower, pidOutput));
 
-                    // Apply the PID output to all motors
                     runAllMotors(pidOutput, pidOutput, pidOutput, pidOutput);
 
-                    // Check if we've reached the target within tolerance
-                    double tolerance = 5.0; // encoder ticks tolerance
+                    double tolerance = 8.0;
                     return Math.abs(currentPos - targetDist) <= tolerance;
                 }),
+
                 new InstantCommand(() -> runAllMotors(0, 0, 0, 0))
         );
     }
