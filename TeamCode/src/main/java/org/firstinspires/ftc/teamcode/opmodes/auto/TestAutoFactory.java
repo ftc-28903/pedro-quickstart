@@ -36,6 +36,8 @@ public class TestAutoFactory {
     private double lastStrafePosition = 0;
     private boolean firstStrafeUpdate = true;
 
+    public int dirMultiplier = 1;
+
     public static PIDCoefficients drivePIDCoefficients = new PIDCoefficients(0.03, 0, 0.0);
     public static BasicFeedforwardParameters driveFeedforwardParameters = new BasicFeedforwardParameters(0,0,0);
     private ControlSystem drivePID = ControlSystem.builder()
@@ -174,7 +176,8 @@ public class TestAutoFactory {
         return strafeTo(distance);
     }
 
-    public CommandGroup turnTo(double targetHeadingDegrees) {
+    public CommandGroup turnTo(double targetHeadingDegrees2) {
+        double targetHeadingDegrees = targetHeadingDegrees2 * dirMultiplier;
         return new SequentialGroup(
                 new InstantCommand(() -> {
                     // Reset heading PID
@@ -204,7 +207,7 @@ public class TestAutoFactory {
                     double headingError = Math.abs(currentHeading - targetHeadingDegrees);
                     ActiveOpMode.telemetry().addData("error", headingError);
 
-                    return Math.abs(headingCorrection) <= 0.1;
+                    return Math.abs(headingCorrection) <= 0.15;
                 }),
                 new InstantCommand(() -> runAllMotors(0, 0, 0, 0))
         );
@@ -273,7 +276,7 @@ public class TestAutoFactory {
         return new SequentialGroup(
                 Shooter.INSTANCE.spinUp,
                 Intake.INSTANCE.spinUp,
-                straight(-2040, 0.5),
+                straight(-2030, 0.4),
                 new Delay(1),
                 turnTo(Webcam.INSTANCE.imuTarget),
                 Transfer.INSTANCE.opModeOverrideOn,
@@ -303,22 +306,26 @@ public class TestAutoFactory {
         return new SequentialGroup(
             Shooter.INSTANCE.spinUp,
                 Intake.INSTANCE.spinUp,
+                straight(200, 0.4),
                 turnTo(22),
                 new Delay(2),
                 //turnTo(Webcam.INSTANCE.imuTarget),
                 Transfer.INSTANCE.opModeOverrideOn,
                 new Delay(5),
                 Transfer.INSTANCE.opModeOverrideOff,
-                turnTo(90),
-                straight(1350, 0.5),
+                turnTo(88),
+                straight(1450, 0.5),
                 new Delay(5),
-                straight(-1450, 0.5),
-                turnTo(30),
+                straight(-1500, 0.5),
+                turnTo(40),
+                new Delay(3),
+                turnTo(Webcam.INSTANCE.imuTarget),
                 Transfer.INSTANCE.opModeOverrideOn,
                 new Delay(5),
                 Transfer.INSTANCE.opModeOverrideOff,
                 Shooter.INSTANCE.spinDown,
-                Intake.INSTANCE.spinDown
+                Intake.INSTANCE.spinDown,
+                straight(700, 1)
         );
     }
 

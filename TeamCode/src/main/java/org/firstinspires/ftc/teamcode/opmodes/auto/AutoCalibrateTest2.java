@@ -24,9 +24,9 @@ import dev.nextftc.hardware.impl.Direction;
 import dev.nextftc.hardware.impl.IMUEx;
 import dev.nextftc.hardware.impl.MotorEx;
 
-@Autonomous(name = "AutoCalibrateTest")
-public class AutoCalibrateTest extends NextFTCOpMode {
-    public AutoCalibrateTest() {
+@Autonomous(name = "AutoCalibrateTest2")
+public class AutoCalibrateTest2 extends NextFTCOpMode {
+    public AutoCalibrateTest2() {
         addComponents(
                 BulkReadComponent.INSTANCE,
                 BindingsComponent.INSTANCE,
@@ -72,7 +72,7 @@ public class AutoCalibrateTest extends NextFTCOpMode {
     public void onStartButtonPressed() {
         Transfer.INSTANCE.offOverrideOff.schedule();
         imu.zero();
-        testAutoFactory.getFarzoneGroup().schedule();
+        testAutoFactory.getTestGroup().schedule();
     }
 
     @Override
