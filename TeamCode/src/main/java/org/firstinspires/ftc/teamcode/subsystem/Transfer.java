@@ -17,7 +17,7 @@ import dev.nextftc.hardware.impl.MotorEx;
 @Configurable
 public class Transfer implements Subsystem {
     public static final Transfer INSTANCE = new Transfer();
-    public static double detectDist = 120;
+    public static double detectDist = 100;
     public static double maxMotorSpeed = 0.75;
     public static double maxOverrideSpeed = 1;
     public static double readDelay = 0;
@@ -28,7 +28,7 @@ public class Transfer implements Subsystem {
     public boolean override = false;
     public boolean opModeOverride = false;
     public boolean offOverride = false;
-    public final MotorEx motor1 = new MotorEx("transfer1");
+    public final MotorEx motor1 = new MotorEx("intake2").reversed();
     public RevColorSensorV3 colorSensorV3;
     public ElapsedTime lastBallInTimer = new ElapsedTime();
 
@@ -59,13 +59,14 @@ public class Transfer implements Subsystem {
         }
 
         ActiveOpMode.telemetry().addData("lastDistance", lastDistance);
+        ActiveOpMode.telemetry().addData("transfer power", motor1.getPower());
 
         if (offOverride) {
             motor1.setPower(0);
             return;
         }
 
-        if (lastDistance > detectDist) {
+        if (lastDistance > detectDist && !(override || opModeOverride)) {
             motor1.setPower(maxMotorSpeed);
             return;
         }

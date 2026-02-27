@@ -7,6 +7,7 @@ import android.util.Size;
 import com.bylazar.configurables.annotations.Configurable;
 import com.bylazar.telemetry.PanelsTelemetry;
 import com.bylazar.telemetry.TelemetryManager;
+import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
 import org.firstinspires.ftc.robotcore.external.hardware.camera.controls.ExposureControl;
@@ -41,9 +42,11 @@ public class Webcam implements Subsystem {
     private static final double CAMERA_TILT_DEGREES = 15.0; // Camera tilted upwards
     public static float decimation = 2.0f;
     private TelemetryManager telemetryM;
-    public double imuTarget = 0;
+    //public double imuTarget = 0;
     public double lastOffset = 0;
-    public double imuOffset = 0;
+    //public double imuOffset = 0;
+
+    public ElapsedTime detectionTimer = new ElapsedTime();
 
     // abs heading
     private double continuousHeading = 0;
@@ -165,7 +168,7 @@ public class Webcam implements Subsystem {
 
         visionPortal = builder.build();
 
-        setManualExposure(2, 100);
+        setManualExposure(7, 100);
     }
 
     @Override
@@ -184,7 +187,8 @@ public class Webcam implements Subsystem {
         if(allianceTag != null && allianceTag.metadata != null) {
             lastDistanceComponent = getDistanceComponents(allianceTag);
             lastOffset = getTurnToBackOfTag(allianceTag);
-            imuTarget = continuousHeading - lastOffset;
+            detectionTimer.reset();
+            //imuTarget = continuousHeading - lastOffset;
         }
 
         displayDetectionTelemetry(allianceTag);
@@ -195,9 +199,9 @@ public class Webcam implements Subsystem {
         }
         ActiveOpMode.telemetry().addLine(sb.toString());
         telemetryM.addData("goalLastOffset", lastOffset);
-        telemetryM.addData("goalIMUTarget", imuTarget);
-        imuOffset = continuousHeading - imuTarget;
-        telemetryM.addData("goalIMUOffset", imuOffset);
+        //telemetryM.addData("goalIMUTarget", imuTarget);
+        //imuOffset = continuousHeading - imuTarget;
+        //telemetryM.addData("goalIMUOffset", imuOffset);
     }
 
     public List<AprilTagDetection> getDetectedTags() {

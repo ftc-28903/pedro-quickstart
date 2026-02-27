@@ -5,8 +5,6 @@ import com.bylazar.telemetry.PanelsTelemetry;
 import com.bylazar.telemetry.TelemetryManager;
 import com.qualcomm.robotcore.hardware.VoltageSensor;
 
-import org.firstinspires.ftc.teamcode.subsystem.ff.ShooterFeedforward;
-
 import dev.nextftc.control.ControlSystem;
 import dev.nextftc.control.KineticState;
 import dev.nextftc.control.feedback.PIDCoefficients;
@@ -32,8 +30,8 @@ public class Shooter implements Subsystem {
     public static double shooterGoal = 1250;
     public static double shooterPowerOverride = 0.1;
     public static double shooterAngle = 0.58;
-    public static PIDCoefficients pidCoefficients = new PIDCoefficients(0.008, 0, 0.0);
-    public static double velocityTolerance = 100;
+    public static PIDCoefficients pidCoefficients = new PIDCoefficients(0.00025, 0, 0.0);
+    public static double velocityTolerance = 30;
     public static double voltageCalibration = 13.0;
 
     private final ControlSystem controlSystem = ControlSystem.builder()
@@ -61,7 +59,7 @@ public class Shooter implements Subsystem {
 
     public boolean isSpeedGood() {
         if (shouldStop) return true;
-        double speed = -motor1.getVelocity();
+        double speed = Math.abs(motor2.getVelocity());
         double target = controlSystem.getGoal().getVelocity();
         
         return speed >= target - velocityTolerance;
@@ -85,16 +83,16 @@ public class Shooter implements Subsystem {
     }
 
     public double calculateHood(double x) {
-        if (x > 270) {
-            return 0.85;
+        if (x < 100) {
+            return 0.5;
         }
-        return 0.8;
+        return 0.6;
     }
 
     public double calculateRPM(double x) {
         // https://curve.fit/KjezG82L/single/20260130071921
-        double m = 1.402e+00;
-        double b = 1.032e+03;
+        double m = 1.244e+00;
+        double b = 1.108e+03;
 
         double result = m*x+b;
         if (x > 270) {
@@ -110,15 +108,16 @@ public class Shooter implements Subsystem {
         voltageSensor = ActiveOpMode.hardwareMap().get(VoltageSensor.class, "Control Hub");
     }
 
-    private static final double a = 2.824e-10;
-    private static final double b = -7.497e-07;
-    private static final double c = 1.013e-03;
-    private static final double d = -7.218e-02;
-
-    public double calculate(double velo) {
-        double speed = velo + 80; // Your +80 offset
-        return ((a * speed + b) * speed + c) * speed + d;
+    public double calculatePower(double velocity) {
+        velocity = velocity+30;
+        double m = 3.811e-04;
+        double b = 1.420e-01;
+        return m * velocity + b;
     }
+
+    public static boolean override = false;
+    public static double overrideVelo = 0;
+    public static double overrideAngle = 0.5;
 
     @Override
     public void periodic() {
@@ -139,11 +138,15 @@ public class Shooter implements Subsystem {
 
             shooterAngle = calculatedHood;
             shooterGoal = calculatedRPM;
+            if (override) {
+                shooterAngle = overrideAngle;
+                shooterGoal = overrideVelo;
+            }
             controlSystem.setGoal(new KineticState(Double.MAX_VALUE, shooterGoal, Double.MAX_VALUE));
         }
         servo1.setPosition(shooterAngle);
 
-        double rawPower = calculate(shooterGoal) + controlSystem.calculate(new KineticState(Double.MAX_VALUE, shooterGoal, Double.MAX_VALUE));
+        double rawPower = calculatePower(shooterGoal) + controlSystem.calculate(new KineticState(Double.MAX_VALUE, Math.abs(motor2.getVelocity()), Double.MAX_VALUE));
 
         double compensatedPower = rawPower * (voltageCalibration / batteryVoltage);
 
@@ -166,7 +169,7 @@ public class Shooter implements Subsystem {
         ActiveOpMode.telemetry().addData("shouldStop", shouldStop);
 
         telemetryM.addData("shooterTargetVelo", controlSystem.getGoal().getVelocity());
-        telemetryM.addData("shooterCurrentVelo", Math.abs(motor1.getVelocity()));
+        telemetryM.addData("shooterCurrentVelo", Math.abs(motor2.getVelocity()));
     }
 
     public static final Shooter INSTANCE = new Shooter();

@@ -9,6 +9,7 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 import org.firstinspires.ftc.teamcode.subsystem.Intake;
 import org.firstinspires.ftc.teamcode.subsystem.Shooter;
 import org.firstinspires.ftc.teamcode.subsystem.Transfer;
+import org.firstinspires.ftc.teamcode.subsystem.Turret;
 import org.firstinspires.ftc.teamcode.subsystem.Webcam;
 
 import dev.nextftc.control.ControlSystem;
@@ -32,7 +33,7 @@ public class MecanumTest extends NextFTCOpMode {
         addComponents(
                 BulkReadComponent.INSTANCE,
                 BindingsComponent.INSTANCE,
-                new SubsystemComponent(Shooter.INSTANCE, Intake.INSTANCE, Transfer.INSTANCE, Webcam.INSTANCE)
+                new SubsystemComponent(Shooter.INSTANCE, Intake.INSTANCE, Transfer.INSTANCE, Webcam.INSTANCE, Turret.INSTANCE)
         );
     }
 
@@ -123,21 +124,17 @@ public class MecanumTest extends NextFTCOpMode {
         Gamepads.gamepad1().share().toggleOnBecomesTrue()
                 .whenBecomesTrue(() -> Transfer.INSTANCE.offOverrideOn.schedule())
                 .whenBecomesFalse(() -> Transfer.INSTANCE.offOverrideOff.schedule());
-
-        Gamepads.gamepad1().circle()
-                .whenBecomesTrue(() -> headingLock = true)
-                .whenBecomesFalse(() -> headingLock = false);
     }
 
     @Override
     public void onUpdate() {
         telemetryM.update(telemetry);
 
-        double offset = Webcam.INSTANCE.imuOffset;
+        /*double offset = Webcam.INSTANCE.imuOffset;
         controlSystem.setGoal(new KineticState(0));
         headingLockPower = controlSystem.calculate(
                 new KineticState(offset, Double.MAX_VALUE, Double.MAX_VALUE)
-        );
+        );*/
 
         //telemetryM.addData("slowMode toggle", slowMode);
         telemetryM.addData("slowMode multiplier", slowModeMultiplier);
