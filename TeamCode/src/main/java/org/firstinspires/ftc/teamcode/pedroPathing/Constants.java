@@ -32,8 +32,8 @@ public class Constants {
             .leftFrontMotorName("front_left")
             .leftFrontEncoderDirection(Encoder.FORWARD)
             .leftRearEncoderDirection(Encoder.FORWARD)
-            .rightFrontEncoderDirection(Encoder.REVERSE)
-            .rightRearEncoderDirection(Encoder.REVERSE)
+            .rightFrontEncoderDirection(Encoder.FORWARD)
+            .rightRearEncoderDirection(Encoder.FORWARD)
             .robotWidth(14.96) // in inches // 37.8cm or 41.8cm?
             .robotLength(11.81);
         // in inches

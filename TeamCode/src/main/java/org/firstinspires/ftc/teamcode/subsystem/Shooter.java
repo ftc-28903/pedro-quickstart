@@ -59,8 +59,11 @@ public class Shooter implements Subsystem {
 
     public boolean isSpeedGood() {
         if (shouldStop) return true;
-        double speed = Math.abs(motor2.getVelocity());
+        double speed = Math.abs(motor1.getVelocity());
         double target = controlSystem.getGoal().getVelocity();
+
+        ActiveOpMode.telemetry().addData("SHOOTERSPEED speed", speed);
+        ActiveOpMode.telemetry().addData("SHOOTERTARGET target", target);
         
         return speed >= target - velocityTolerance;
     }
@@ -146,7 +149,7 @@ public class Shooter implements Subsystem {
         }
         servo1.setPosition(shooterAngle);
 
-        double rawPower = calculatePower(shooterGoal) + controlSystem.calculate(new KineticState(Double.MAX_VALUE, Math.abs(motor2.getVelocity()), Double.MAX_VALUE));
+        double rawPower = calculatePower(shooterGoal) + controlSystem.calculate(new KineticState(Double.MAX_VALUE, Math.abs(motor1.getVelocity()), Double.MAX_VALUE));
 
         double compensatedPower = rawPower * (voltageCalibration / batteryVoltage);
 
@@ -169,7 +172,7 @@ public class Shooter implements Subsystem {
         ActiveOpMode.telemetry().addData("shouldStop", shouldStop);
 
         telemetryM.addData("shooterTargetVelo", controlSystem.getGoal().getVelocity());
-        telemetryM.addData("shooterCurrentVelo", Math.abs(motor2.getVelocity()));
+        telemetryM.addData("shooterCurrentVelo", Math.abs(motor1.getVelocity()));
     }
 
     public static final Shooter INSTANCE = new Shooter();

@@ -60,11 +60,12 @@ public class Transfer implements Subsystem {
 
         ActiveOpMode.telemetry().addData("lastDistance", lastDistance);
         ActiveOpMode.telemetry().addData("transfer power", motor1.getPower());
+        ActiveOpMode.telemetry().addData("is speed good", Shooter.INSTANCE.isSpeedGood());
 
-        if (offOverride) {
+        /*if (offOverride) {
             motor1.setPower(0);
             return;
-        }
+        }*/
 
         if (lastDistance > detectDist && !(override || opModeOverride)) {
             motor1.setPower(maxMotorSpeed);

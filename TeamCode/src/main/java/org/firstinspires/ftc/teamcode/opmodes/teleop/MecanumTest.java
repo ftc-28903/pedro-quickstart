@@ -76,6 +76,7 @@ public class MecanumTest extends NextFTCOpMode {
     @Override
     public void onStartButtonPressed() {
         Transfer.INSTANCE.offOverrideOff.schedule();
+        //Shooter.INSTANCE.spinUp.schedule();
         Command driverControlled = new MecanumDriverControlled(
             frontLeftMotor,
                 frontRightMotor,

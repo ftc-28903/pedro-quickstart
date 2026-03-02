@@ -24,7 +24,7 @@ import dev.nextftc.hardware.impl.Direction;
 import dev.nextftc.hardware.impl.IMUEx;
 import dev.nextftc.hardware.impl.MotorEx;
 
-@Autonomous(name = "AutoCalibrateTest")
+@Autonomous(name = "Far zone auto")
 public class AutoCalibrateTest extends NextFTCOpMode {
     public AutoCalibrateTest() {
         addComponents(
@@ -66,6 +66,9 @@ public class AutoCalibrateTest extends NextFTCOpMode {
         } else if (AutoStorage.allianceColor == AllianceColor.BLUE) {
             testAutoFactory.dirMultiplier = 1;
         }
+
+        telemetry.addData("alliance", AutoStorage.allianceColor);
+        telemetry.update();
     }
 
     @Override

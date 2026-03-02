@@ -5,7 +5,7 @@ import com.bylazar.configurables.annotations.Configurable;
 import org.firstinspires.ftc.teamcode.subsystem.Intake;
 import org.firstinspires.ftc.teamcode.subsystem.Shooter;
 import org.firstinspires.ftc.teamcode.subsystem.Transfer;
-import org.firstinspires.ftc.teamcode.subsystem.Webcam;
+import org.firstinspires.ftc.teamcode.subsystem.Turret;
 
 import dev.nextftc.control.ControlSystem;
 import dev.nextftc.control.KineticState;
@@ -203,7 +203,7 @@ public class TestAutoFactory {
                     );
 
                     // Check if we're within tolerance (2 degrees by default)
-                    double headingTolerance = 0.0; // degrees
+                    double headingTolerance = 3.0; // degrees
                     double headingError = Math.abs(currentHeading - targetHeadingDegrees);
                     ActiveOpMode.telemetry().addData("error", headingError);
 
@@ -272,28 +272,40 @@ public class TestAutoFactory {
         );
     }
 
-    public CommandGroup getTestGroup() {
+    public CommandGroup getGoalGroup() {
         return new SequentialGroup(
                 Shooter.INSTANCE.spinUp,
                 Intake.INSTANCE.spinUp,
-                straight(-1980, 0.4),
+                straight(-100, 0.3),
+                turnTo(-5),
+                straight(-1600, 0.6),
                 new Delay(1),
                 turnTo(0),
+                //Turret.INSTANCE.waitForTurretAim,
                 Transfer.INSTANCE.opModeOverrideOn,
-                new Delay(3),
+                new Delay(4),
                 Transfer.INSTANCE.opModeOverrideOff,
-                turnTo(33),
-                straight(1550,0.6),
+                turnTo(30),
+                straight(1200,0.6),
                 new Delay(1),
-                straight(-1550,0.6),
-                turnTo(0),
-                turnTo(0),
+                straight(-1200,0.6),
+                //turnTo(0),
+                //Turret.INSTANCE.waitForTurretAim,
                 Transfer.INSTANCE.opModeOverrideOn,
-                new Delay(3),
+                new Delay(4),
                 Transfer.INSTANCE.opModeOverrideOff,
-                turnTo(90),
-                straight(700,1),
+                turnTo(-54),
+                straight(-975, 0.6),
+                turnTo(30),
+                straight(1100, 0.6),
+                turnTo(70),
+                straight(-1700, 0.6),
+                Transfer.INSTANCE.opModeOverrideOn,
+                new Delay(4),
+                Transfer.INSTANCE.opModeOverrideOff,
                 //strafeLeft(50),
+
+                straight(1300, 1),
 
 
                 Shooter.INSTANCE.spinDown,
@@ -304,20 +316,22 @@ public class TestAutoFactory {
 
     public CommandGroup getFarzoneGroup() {
         return new SequentialGroup(
-            Shooter.INSTANCE.spinUp,
+                Shooter.INSTANCE.spinUp,
                 Intake.INSTANCE.spinUp,
-                straight(200, 0.4),
-                turnTo(22),
-                new Delay(2),
+                //straight(200, 0.4),
+                turnTo(0),
+                //Turret.INSTANCE.waitForTurretAim,
                 //turnTo(Webcam.INSTANCE.imuTarget),
                 Transfer.INSTANCE.opModeOverrideOn,
                 new Delay(5),
                 Transfer.INSTANCE.opModeOverrideOff,
-                turnTo(88),
+                turnTo(0),
                 straight(1450, 0.5),
-                new Delay(5),
+                new Delay(3),
+                turnTo(0),
                 straight(-1500, 0.5),
-                turnTo(40),
+                turnTo(0),
+                //Turret.INSTANCE.waitForTurretAim,
                 new Delay(3),
                 //turnTo(Webcam.INSTANCE.imuTarget),
                 Transfer.INSTANCE.opModeOverrideOn,

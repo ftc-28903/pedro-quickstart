@@ -3,7 +3,6 @@ package org.firstinspires.ftc.teamcode.opmodes.auto;
 import com.bylazar.telemetry.PanelsTelemetry;
 import com.bylazar.telemetry.TelemetryManager;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
-import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.teamcode.subsystem.Intake;
@@ -14,18 +13,15 @@ import org.firstinspires.ftc.teamcode.subsystem.Webcam;
 import org.firstinspires.ftc.teamcode.utils.AllianceColor;
 import org.firstinspires.ftc.teamcode.utils.AutoStorage;
 
-import dev.nextftc.core.commands.Command;
 import dev.nextftc.core.components.BindingsComponent;
 import dev.nextftc.core.components.SubsystemComponent;
-import dev.nextftc.ftc.Gamepads;
 import dev.nextftc.ftc.NextFTCOpMode;
 import dev.nextftc.ftc.components.BulkReadComponent;
-import dev.nextftc.hardware.driving.MecanumDriverControlled;
 import dev.nextftc.hardware.impl.Direction;
 import dev.nextftc.hardware.impl.IMUEx;
 import dev.nextftc.hardware.impl.MotorEx;
 
-@Autonomous(name = "AutoCalibrateTest2")
+@Autonomous(name = "Goal auto")
 public class AutoCalibrateTest2 extends NextFTCOpMode {
     public AutoCalibrateTest2() {
         addComponents(
@@ -67,13 +63,16 @@ public class AutoCalibrateTest2 extends NextFTCOpMode {
         } else if (AutoStorage.allianceColor == AllianceColor.BLUE) {
             testAutoFactory.dirMultiplier = 1;
         }
+
+        telemetry.addData("alliance", AutoStorage.allianceColor);
+        telemetry.update();
     }
 
     @Override
     public void onStartButtonPressed() {
         Transfer.INSTANCE.offOverrideOff.schedule();
         imu.zero();
-        testAutoFactory.getTestGroup().schedule();
+        testAutoFactory.getGoalGroup().schedule();
     }
 
     @Override
