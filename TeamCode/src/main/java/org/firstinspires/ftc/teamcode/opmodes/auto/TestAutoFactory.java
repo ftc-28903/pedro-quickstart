@@ -38,7 +38,7 @@ public class TestAutoFactory {
 
     public int dirMultiplier = 1;
 
-    public static PIDCoefficients drivePIDCoefficients = new PIDCoefficients(0.03, 0, 0.0);
+    public static PIDCoefficients drivePIDCoefficients = new PIDCoefficients(0.025, 0, 0.0);
     public static BasicFeedforwardParameters driveFeedforwardParameters = new BasicFeedforwardParameters(0,0,0);
     private ControlSystem drivePID = ControlSystem.builder()
             .posPid(drivePIDCoefficients)
@@ -78,8 +78,10 @@ public class TestAutoFactory {
     public double getForwardPosition() {
         return (
                 backLeftMotor.getCurrentPosition() +
-                        backRightMotor.getCurrentPosition()
-        ) / 2.0;
+                        backRightMotor.getCurrentPosition() +
+                        frontLeftMotor.getCurrentPosition() +
+                        frontRightMotor.getCurrentPosition()
+        ) / 4.0;
     }
 
     public double getStrafePosition() {
@@ -100,29 +102,74 @@ public class TestAutoFactory {
 
     double targetDist;
 
-    public CommandGroup straight(double dist, double maxPower) {
+    public static double brakingStart = 450;
+    public static double brakingStrength = 1;
+    public static double slewRateLimit = 0.2;
+    public static double minDrivePower = 0.15; // never clamp below this
+
+    private double lastDriveOutput = 0;
+    private double totalDist = 0; // track full path length
+
+    public CommandGroup straight(double dist, double maxPower, double targetHeading) {
         return new SequentialGroup(
                 new InstantCommand(() -> {
                     double startPos = getForwardPosition();
                     targetDist = startPos + dist;
+                    totalDist = Math.abs(dist); // store full path length
 
                     drivePID.reset();
                     drivePID.setGoal(new KineticState(targetDist, 0, 0));
+
+                    headingPID.reset();
+                    headingPID.setGoal(new KineticState(targetHeading * dirMultiplier, 0, 0));
+
+                    lastDriveOutput = 0;
                 }),
 
                 new WaitUntil(() -> {
                     double currentPos = getForwardPosition();
+                    double currentHeading = getCurrentHeading();
 
-                    double pidOutput = drivePID.calculate(new KineticState(currentPos));
-                    pidOutput = Math.max(-maxPower, Math.min(maxPower, pidOutput));
+                    double rawDriveOutput = drivePID.calculate(new KineticState(currentPos));
 
-                    runAllMotors(pidOutput, pidOutput, pidOutput, pidOutput);
+                    // Only apply braking if brakingStart is smaller than the total path,
+                    // otherwise braking would kick in before the robot even starts moving
+                    double distanceRemaining = Math.abs(targetDist - currentPos);
+                    double effectiveMaxPower = maxPower;
+                    double effectiveBrakingStart = Math.min(brakingStart, totalDist * 0.5);
+
+                    if (distanceRemaining <= effectiveBrakingStart && effectiveBrakingStart > 0) {
+                        double brakingFactor = distanceRemaining / effectiveBrakingStart;
+                        double minBrakePower = Math.max(maxPower * (1.0 - brakingStrength), minDrivePower);
+                        effectiveMaxPower = minBrakePower + (maxPower - minBrakePower) * brakingFactor;
+                        effectiveMaxPower = Math.max(effectiveMaxPower, minDrivePower);
+                    }
+
+                    rawDriveOutput = Math.max(-effectiveMaxPower, Math.min(effectiveMaxPower, rawDriveOutput));
+
+                    // Slew rate limiter
+                    double delta = rawDriveOutput - lastDriveOutput;
+                    delta = Math.max(-slewRateLimit, Math.min(slewRateLimit, delta));
+                    double driveOutput = lastDriveOutput + delta;
+                    lastDriveOutput = driveOutput;
+
+                    double headingCorrection = headingPID.calculate(new KineticState(currentHeading));
+
+                    runAllMotors(
+                            driveOutput - headingCorrection,
+                            driveOutput + headingCorrection,
+                            driveOutput - headingCorrection,
+                            driveOutput + headingCorrection
+                    );
 
                     double tolerance = 8.0;
                     return Math.abs(currentPos - targetDist) <= tolerance;
                 }),
 
-                new InstantCommand(() -> runAllMotors(0, 0, 0, 0))
+                new InstantCommand(() -> {
+                    lastDriveOutput = 0;
+                    runAllMotors(0, 0, 0, 0);
+                })
         );
     }
 
@@ -276,36 +323,37 @@ public class TestAutoFactory {
         return new SequentialGroup(
                 Shooter.INSTANCE.spinUp,
                 Intake.INSTANCE.spinUp,
-                straight(-100, 0.3),
+                straight(-100, 0.3, 0),
                 turnTo(-5),
-                straight(-1600, 0.6),
+                straight(-1450, 0.8, -5),
                 new Delay(1),
                 turnTo(0),
-                //Turret.INSTANCE.waitForTurretAim,
+                Turret.INSTANCE.waitForTurret,
                 Transfer.INSTANCE.opModeOverrideOn,
-                new Delay(4),
+                new Delay(3),
                 Transfer.INSTANCE.opModeOverrideOff,
-                turnTo(30),
-                straight(1200,0.6),
+                turnTo(42),
+                straight(1200,0.8, 42),
                 new Delay(1),
-                straight(-1200,0.6),
+                straight(-1200,0.8, 42),
                 //turnTo(0),
-                //Turret.INSTANCE.waitForTurretAim,
+                Turret.INSTANCE.waitForTurret,
                 Transfer.INSTANCE.opModeOverrideOn,
-                new Delay(4),
+                new Delay(3),
                 Transfer.INSTANCE.opModeOverrideOff,
                 turnTo(-54),
-                straight(-975, 0.6),
+                straight(-1050, 0.8, -54),
                 turnTo(30),
-                straight(1100, 0.6),
-                turnTo(70),
-                straight(-1700, 0.6),
+                straight(1150, 0.8, 30),
+                turnTo(75),
+                straight(-1300, 0.8, 75),
+                Turret.INSTANCE.waitForTurret,
                 Transfer.INSTANCE.opModeOverrideOn,
-                new Delay(4),
+                new Delay(3),
                 Transfer.INSTANCE.opModeOverrideOff,
                 //strafeLeft(50),
 
-                straight(1300, 1),
+                straight(1300, 1, 75),
 
 
                 Shooter.INSTANCE.spinDown,
@@ -326,10 +374,10 @@ public class TestAutoFactory {
                 new Delay(5),
                 Transfer.INSTANCE.opModeOverrideOff,
                 turnTo(0),
-                straight(1450, 0.5),
+                straight(1450, 0.5, 0),
                 new Delay(3),
                 turnTo(0),
-                straight(-1500, 0.5),
+                straight(-1500, 0.5, 0),
                 turnTo(0),
                 //Turret.INSTANCE.waitForTurretAim,
                 new Delay(3),
@@ -339,7 +387,7 @@ public class TestAutoFactory {
                 Transfer.INSTANCE.opModeOverrideOff,
                 Shooter.INSTANCE.spinDown,
                 Intake.INSTANCE.spinDown,
-                straight(700, 1)
+                straight(700, 1, 0)
         );
     }
 
@@ -354,7 +402,7 @@ public class TestAutoFactory {
         return new SequentialGroup(
                 Shooter.INSTANCE.spinUp,
                 Intake.INSTANCE.spinUp,
-                straight(-100, 0.6),
+                straight(-100, 0.6, 0),
                 Shooter.INSTANCE.waitForSpeed,
                 // shoot preload
                 Transfer.INSTANCE.opModeOverrideOn,
@@ -363,8 +411,8 @@ public class TestAutoFactory {
 
                 // 1st line intake
                 turnTo(-55),
-                straight(100, 0.6),
-                straight(-100, 0.6),
+                straight(100, 0.6, -55),
+                straight(-100, 0.6, -55),
 
                 // 1st line shoot
                 turnTo(0),
@@ -375,8 +423,8 @@ public class TestAutoFactory {
                 // 2nd line intake
                 turnTo(-52),
                 strafeLeft(50),
-                straight(120, 0.6),
-                straight(-120, 0.6),
+                straight(120, 0.6, -52),
+                straight(-120, 0.6, -52),
                 strafeRight(-50),
 
                 // 2nd line shoot

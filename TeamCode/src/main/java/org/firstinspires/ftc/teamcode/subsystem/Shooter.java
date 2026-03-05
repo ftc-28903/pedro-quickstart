@@ -86,7 +86,7 @@ public class Shooter implements Subsystem {
     }
 
     public double calculateHood(double x) {
-        if (x < 100) {
+        if (x < 140) {
             return 0.5;
         }
         return 0.6;
@@ -97,12 +97,11 @@ public class Shooter implements Subsystem {
         double m = 1.244e+00;
         double b = 1.108e+03;
 
-        double result = m*x+b;
-        if (x > 270) {
-            return result+20;
-        } else {
-            return result;
+        if (x < 140) {
+            return m*(x-50)+b;
         }
+
+        return m*x+b;
     }
 
     @Override

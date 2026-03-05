@@ -37,8 +37,8 @@ public class Turret implements Subsystem {
             .basicFF(feedforwardParameters)
             .build();
 
-    public static double kP = 0.02;
-    public static double kF = 0.025;
+    public static double kP = 0.017;
+    public static double kF = 0.02;
 
     // Prediction state
     private double lastOffset = 0;
@@ -52,6 +52,11 @@ public class Turret implements Subsystem {
     // Scan behavior
     public static double scanAmplitude = 2;   // max servo power
     public static double scanFrequency = 0.3;   // cycles per second
+
+    public Command waitForTurret = new WaitUntil(this::isTurretInRange);
+    public boolean isTurretInRange() {
+        return Math.abs(Webcam.INSTANCE.lastOffset) < 5;
+    }
 
     @Override
     public void initialize() {

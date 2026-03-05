@@ -38,10 +38,10 @@ public class AutoCalibrateTest extends NextFTCOpMode {
 
     private final ElapsedTime loopTimeTimer = new ElapsedTime();
 
-    private final MotorEx frontLeftMotor = new MotorEx("front_left").brakeMode();
-    private final MotorEx frontRightMotor = new MotorEx("front_right").reversed().brakeMode();
-    private final MotorEx backLeftMotor = new MotorEx("back_left").brakeMode();
-    private final MotorEx backRightMotor = new MotorEx("back_right").reversed().brakeMode();
+    private final MotorEx frontLeftMotor = new MotorEx("front_left").floatMode();
+    private final MotorEx frontRightMotor = new MotorEx("front_right").reversed().floatMode();
+    private final MotorEx backLeftMotor = new MotorEx("back_left").floatMode();
+    private final MotorEx backRightMotor = new MotorEx("back_right").reversed().floatMode();
 
     private TelemetryManager telemetryM;
     private TestAutoFactory testAutoFactory;

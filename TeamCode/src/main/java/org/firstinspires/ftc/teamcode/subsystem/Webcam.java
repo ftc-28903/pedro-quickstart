@@ -168,7 +168,7 @@ public class Webcam implements Subsystem {
 
         visionPortal = builder.build();
 
-        setManualExposure(1, 100);
+        setManualExposure(1, 7);
     }
 
     @Override
