@@ -1,5 +1,7 @@
 package org.firstinspires.ftc.teamcode.subsystem;
 
+import static org.firstinspires.ftc.teamcode.subsystem.BatteryVars.batteryVoltage;
+
 import com.bylazar.configurables.annotations.Configurable;
 import com.bylazar.telemetry.PanelsTelemetry;
 import com.bylazar.telemetry.TelemetryManager;
@@ -15,6 +17,7 @@ import dev.nextftc.core.subsystems.Subsystem;
 import dev.nextftc.ftc.ActiveOpMode;
 import dev.nextftc.hardware.impl.MotorEx;
 import dev.nextftc.hardware.impl.ServoEx;
+import org.firstinspires.ftc.teamcode.subsystem.BatteryVars;
 
 @Configurable
 public class Shooter implements Subsystem {
@@ -31,7 +34,7 @@ public class Shooter implements Subsystem {
     public static double shooterPowerOverride = 0.1;
     public static double shooterAngle = 0.58;
     public static PIDCoefficients pidCoefficients = new PIDCoefficients(0.00025, 0, 0.0);
-    public static double velocityTolerance = 30;
+    public static double velocityTolerance = 200;
     public static double voltageCalibration = 13.0;
 
     private final ControlSystem controlSystem = ControlSystem.builder()
@@ -86,9 +89,9 @@ public class Shooter implements Subsystem {
     }
 
     public double calculateHood(double x) {
-        if (x < 140) {
+        /*if (x < 140) {
             return 0.5;
-        }
+        }*/
         return 0.6;
     }
 
@@ -97,9 +100,9 @@ public class Shooter implements Subsystem {
         double m = 1.244e+00;
         double b = 1.108e+03;
 
-        if (x < 140) {
-            return m*(x-50)+b;
-        }
+        /*if (x < 140) {
+            return m*(x-30)+b;
+        }*/
 
         return m*x+b;
     }
@@ -123,7 +126,7 @@ public class Shooter implements Subsystem {
 
     @Override
     public void periodic() {
-        double batteryVoltage = voltageSensor.getVoltage();
+        batteryVoltage = voltageSensor.getVoltage();
         telemetryM.addData("batteryVoltage", batteryVoltage);
 
         if(true) {
@@ -149,7 +152,7 @@ public class Shooter implements Subsystem {
         servo1.setPosition(shooterAngle);
 
         double rawPower = calculatePower(shooterGoal) + controlSystem.calculate(new KineticState(Double.MAX_VALUE, Math.abs(motor1.getVelocity()), Double.MAX_VALUE));
-
+        rawPower = 1;
         double compensatedPower = rawPower * (voltageCalibration / batteryVoltage);
 
         // Prevent clipping explosions

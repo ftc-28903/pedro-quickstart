@@ -3,6 +3,7 @@ package org.firstinspires.ftc.teamcode.opmodes.auto;
 import com.bylazar.telemetry.PanelsTelemetry;
 import com.bylazar.telemetry.TelemetryManager;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
+import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.teamcode.subsystem.Intake;
@@ -13,17 +14,20 @@ import org.firstinspires.ftc.teamcode.subsystem.Webcam;
 import org.firstinspires.ftc.teamcode.utils.AllianceColor;
 import org.firstinspires.ftc.teamcode.utils.AutoStorage;
 
+import dev.nextftc.core.commands.Command;
 import dev.nextftc.core.components.BindingsComponent;
 import dev.nextftc.core.components.SubsystemComponent;
+import dev.nextftc.ftc.Gamepads;
 import dev.nextftc.ftc.NextFTCOpMode;
 import dev.nextftc.ftc.components.BulkReadComponent;
+import dev.nextftc.hardware.driving.MecanumDriverControlled;
 import dev.nextftc.hardware.impl.Direction;
 import dev.nextftc.hardware.impl.IMUEx;
 import dev.nextftc.hardware.impl.MotorEx;
 
-@Autonomous(name = "Goal auto")
-public class AutoCalibrateTest2 extends NextFTCOpMode {
-    public AutoCalibrateTest2() {
+@Autonomous(name = "ActualAutoCalibrate")
+public class ActualAutoCalibrate extends NextFTCOpMode {
+    public ActualAutoCalibrate() {
         addComponents(
                 BulkReadComponent.INSTANCE,
                 BindingsComponent.INSTANCE,
@@ -35,10 +39,10 @@ public class AutoCalibrateTest2 extends NextFTCOpMode {
 
     private final ElapsedTime loopTimeTimer = new ElapsedTime();
 
-    private final MotorEx frontLeftMotor = new MotorEx("front_left").brakeMode();
-    private final MotorEx frontRightMotor = new MotorEx("front_right").reversed().brakeMode();
-    private final MotorEx backLeftMotor = new MotorEx("back_left").brakeMode();
-    private final MotorEx backRightMotor = new MotorEx("back_right").reversed().brakeMode();
+    private final MotorEx frontLeftMotor = new MotorEx("front_left").floatMode();
+    private final MotorEx frontRightMotor = new MotorEx("front_right").reversed().floatMode();
+    private final MotorEx backLeftMotor = new MotorEx("back_left").floatMode();
+    private final MotorEx backRightMotor = new MotorEx("back_right").reversed().floatMode();
 
     private TelemetryManager telemetryM;
     private TestAutoFactory testAutoFactory;
@@ -63,7 +67,6 @@ public class AutoCalibrateTest2 extends NextFTCOpMode {
         } else if (AutoStorage.allianceColor == AllianceColor.BLUE) {
             testAutoFactory.dirMultiplier = 1;
         }
-        Turret.INSTANCE.disableTurret.schedule();
 
         telemetry.addData("alliance", AutoStorage.allianceColor);
         telemetry.update();
@@ -73,7 +76,7 @@ public class AutoCalibrateTest2 extends NextFTCOpMode {
     public void onStartButtonPressed() {
         Transfer.INSTANCE.offOverrideOff.schedule();
         imu.zero();
-        testAutoFactory.getGoalGroup().schedule();
+        testAutoFactory.getTuningGroup().schedule();
     }
 
     @Override
@@ -83,7 +86,6 @@ public class AutoCalibrateTest2 extends NextFTCOpMode {
 
         telemetryM.addData("backRightPos", backRightMotor.getCurrentPosition());
         telemetryM.addData("imuDeg", imu.get().inDeg);
-        telemetryM.addData("whatthefuck_imuDeg", testAutoFactory.getCurrentHeading());
         loopTimeTimer.reset();
     }
 }

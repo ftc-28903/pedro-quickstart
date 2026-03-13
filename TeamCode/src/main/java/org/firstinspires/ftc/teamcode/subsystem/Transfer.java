@@ -17,7 +17,7 @@ import dev.nextftc.hardware.impl.MotorEx;
 @Configurable
 public class Transfer implements Subsystem {
     public static final Transfer INSTANCE = new Transfer();
-    public static double detectDist = 100;
+    public static double detectDist = 80;
     public static double maxMotorSpeed = 0.75;
     public static double maxOverrideSpeed = 1;
     public static double readDelay = 0;
@@ -32,7 +32,12 @@ public class Transfer implements Subsystem {
     public RevColorSensorV3 colorSensorV3;
     public ElapsedTime lastBallInTimer = new ElapsedTime();
 
-    public Command overrideOn = new InstantCommand(() -> override = true);
+    public ElapsedTime overrideCycleTimer = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
+
+    public Command overrideOn = new InstantCommand(() -> {
+        override = true;
+        overrideCycleTimer.reset();
+    });
     public Command spinUpReverse = new InstantCommand(() -> motor1.setPower(-1));
 
     public Command overrideOff = new InstantCommand(() -> override = false);
@@ -41,6 +46,7 @@ public class Transfer implements Subsystem {
 
     public Command offOverrideOn = new InstantCommand(() -> offOverride = true);
     public Command offOverrideOff = new InstantCommand(() -> offOverride = false);
+
 
     @Override
     public void initialize() {
@@ -62,18 +68,25 @@ public class Transfer implements Subsystem {
         ActiveOpMode.telemetry().addData("transfer power", motor1.getPower());
         ActiveOpMode.telemetry().addData("is speed good", Shooter.INSTANCE.isSpeedGood());
 
-        /*if (offOverride) {
+        if (offOverride) {
             motor1.setPower(0);
-            return;
-        }*/
-
-        if (lastDistance > detectDist && !(override || opModeOverride)) {
-            motor1.setPower(maxMotorSpeed);
             return;
         }
 
         if ((override || opModeOverride) && Shooter.INSTANCE.isSpeedGood()) {
-            motor1.setPower(maxOverrideSpeed);
+            double cycleTime = overrideCycleTimer.milliseconds() % 800;
+
+            if (cycleTime < (800-150)) {
+                motor1.setPower(maxOverrideSpeed); // run
+            } else {
+                motor1.setPower(0); // pause
+            }
+
+            return;
+        }
+
+        if (lastDistance > detectDist) {
+            motor1.setPower(maxMotorSpeed);
             return;
         }
 

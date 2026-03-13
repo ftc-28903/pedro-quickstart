@@ -168,7 +168,7 @@ public class Webcam implements Subsystem {
 
         visionPortal = builder.build();
 
-        setManualExposure(1, 7);
+        setManualExposure(2, 100);
     }
 
     @Override
@@ -179,9 +179,9 @@ public class Webcam implements Subsystem {
 
         AprilTagDetection allianceTag = null;
         if (AutoStorage.allianceColor == AllianceColor.BLUE) {
-            allianceTag = getTagBySpecificId(20);
+            allianceTag = getTagBySpecificId(22);
         } else if (AutoStorage.allianceColor == AllianceColor.RED) {
-            allianceTag = getTagBySpecificId(24);
+            allianceTag = getTagBySpecificId(23);
         }
 
         if(allianceTag != null && allianceTag.metadata != null) {

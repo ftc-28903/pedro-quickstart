@@ -1,5 +1,7 @@
 package org.firstinspires.ftc.teamcode.subsystem;
 
+import static org.firstinspires.ftc.teamcode.subsystem.BatteryVars.batteryVoltage;
+
 import com.bylazar.configurables.annotations.Configurable;
 import com.bylazar.telemetry.PanelsTelemetry;
 import com.bylazar.telemetry.TelemetryManager;
@@ -38,7 +40,7 @@ public class Turret implements Subsystem {
             .build();
 
     public static double kP = 0.017;
-    public static double kF = 0.02;
+    public static double kF = 0.035;
 
     // Prediction state
     private double lastOffset = 0;
@@ -53,7 +55,17 @@ public class Turret implements Subsystem {
     public static double scanAmplitude = 2;   // max servo power
     public static double scanFrequency = 0.3;   // cycles per second
 
-    public Command waitForTurret = new WaitUntil(this::isTurretInRange);
+    public boolean seesTag = false;
+
+    public Command disableTurret = new InstantCommand(() -> {
+        manualOverride = true;
+    });
+
+    public Command enableTurret = new InstantCommand(() -> {
+        manualOverride = false;
+    });
+
+    public Command waitForTurret = new WaitUntil(() -> seesTag);
     public boolean isTurretInRange() {
         return Math.abs(Webcam.INSTANCE.lastOffset) < 5;
     }
@@ -73,7 +85,7 @@ public class Turret implements Subsystem {
 
         double now = System.currentTimeMillis() / 1000.0;
 
-        boolean seesTag = Webcam.INSTANCE.detectionTimer.milliseconds() <= 800;
+        seesTag = Webcam.INSTANCE.detectionTimer.milliseconds() <= 300;
 
         if (seesTag) {
             // --- Update velocity estimate ---
@@ -86,12 +98,9 @@ public class Turret implements Subsystem {
             lastTimestamp = now;
             tagLostTime = -1;
 
-            double power = kP * -Webcam.INSTANCE.lastOffset;
-            if (power < 0) {
-                power -= kF;
-            } else {
-                power += kF;
-            }
+            double power = (kP * -Webcam.INSTANCE.lastOffset) * (13/batteryVoltage);
+            power += Math.signum(power) * kF;
+            power = Math.max(-0.5, Math.min(0.5, power));
 
             servo1.setPower(power);
             servo2.setPower(power);
@@ -110,34 +119,34 @@ public class Turret implements Subsystem {
             double timeSinceLost = now - tagLostTime;
 
             if (timeSinceLost <= 1) {
-                // --- Predict offset ---
-                double predictedOffset = lastOffset + offsetVelocity * timeSinceLost;
+                // --- Full power nudge in last known velocity direction ---
+                double nudgeDirection = Math.signum(offsetVelocity);
+                if (nudgeDirection == 0) nudgeDirection = Math.signum(lastOffset);
 
-                //double power = kP * -predictedOffset;
-                double power = 1;
+                double power = -nudgeDirection;
+                power = Math.max(-0.75, Math.min(0.75, power));
 
                 servo1.setPower(power);
                 servo2.setPower(power);
 
-                telemetryM.addData("mode", "PREDICTING");
-                telemetryM.addData("predictedOffset", predictedOffset);
-                telemetryM.addData("velocity", offsetVelocity);
-                telemetryM.addData("power", power);
+                telemetryM.addData("mode", "NUDGING");
+                telemetryM.addData("nudgeDirection", nudgeDirection);
             }
             else {
-                // --- SCAN MODE (back and forth) ---
-                double scanTime = now - tagLostTime - 1.0; // start scanning after 1s
+                // --- SCAN MODE — sweep toward last known offset side ---
+                double scanTime = now - tagLostTime - 1.0;
 
-                double power = scanAmplitude * Math.sin(2 * Math.PI * scanFrequency * scanTime);
+                double direction = Math.signum(lastOffset);
+                if (direction == 0) direction = 1;
 
-                if (power < 0) {
-                    power *= 1.2;
-                }
+                double power = direction * Math.sin(2 * Math.PI * scanFrequency * scanTime);
+                power = Math.max(-0.75, Math.min(0.75, power));
 
                 servo1.setPower(power);
                 servo2.setPower(power);
 
                 telemetryM.addData("mode", "SCANNING");
+                telemetryM.addData("scanToward", direction);
                 telemetryM.addData("scanPower", power);
             }
         }

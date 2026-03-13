@@ -9,6 +9,7 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 import org.firstinspires.ftc.teamcode.subsystem.Intake;
 import org.firstinspires.ftc.teamcode.subsystem.Shooter;
 import org.firstinspires.ftc.teamcode.subsystem.Transfer;
+import org.firstinspires.ftc.teamcode.subsystem.Turret;
 import org.firstinspires.ftc.teamcode.subsystem.Webcam;
 import org.firstinspires.ftc.teamcode.utils.AllianceColor;
 import org.firstinspires.ftc.teamcode.utils.AutoStorage;
@@ -30,7 +31,7 @@ public class AutoCalibrateTest extends NextFTCOpMode {
         addComponents(
                 BulkReadComponent.INSTANCE,
                 BindingsComponent.INSTANCE,
-                new SubsystemComponent(Shooter.INSTANCE, Intake.INSTANCE, Transfer.INSTANCE, Webcam.INSTANCE)
+                new SubsystemComponent(Shooter.INSTANCE, Intake.INSTANCE, Transfer.INSTANCE, Webcam.INSTANCE, Turret.INSTANCE)
         );
     }
 
@@ -66,6 +67,7 @@ public class AutoCalibrateTest extends NextFTCOpMode {
         } else if (AutoStorage.allianceColor == AllianceColor.BLUE) {
             testAutoFactory.dirMultiplier = 1;
         }
+        Turret.INSTANCE.disableTurret.schedule();
 
         telemetry.addData("alliance", AutoStorage.allianceColor);
         telemetry.update();
