@@ -55,6 +55,9 @@ public class MecanumTest extends NextFTCOpMode {
     private boolean headingLock = false;
     private double headingLockPower = 0.0;
 
+    private double averageLoopTime = 0;
+    private final int windowSize = 50;
+
     public static PIDCoefficients headingPIDCoefficients = new PIDCoefficients(0.03, 0, 0.0);
     private final ControlSystem controlSystem = ControlSystem.builder()
             .posPid(headingPIDCoefficients)
@@ -133,6 +136,7 @@ public class MecanumTest extends NextFTCOpMode {
     @Override
     public void onUpdate() {
         telemetryM.update(telemetry);
+        double currentLoopTime = loopTimeTimer.milliseconds();
 
         /*double offset = Webcam.INSTANCE.imuOffset;
         controlSystem.setGoal(new KineticState(0));
@@ -142,8 +146,17 @@ public class MecanumTest extends NextFTCOpMode {
 
         //telemetryM.addData("slowMode toggle", slowMode);
         telemetryM.addData("slowMode multiplier", slowModeMultiplier);
-        telemetryM.addData("loop time", loopTimeTimer.milliseconds());
+
+        telemetryM.addData("loop time", currentLoopTime);
+        if (averageLoopTime == 0) {
+            averageLoopTime = currentLoopTime;
+        } else {
+            averageLoopTime = averageLoopTime + ((currentLoopTime - averageLoopTime) / windowSize);
+        }
+        telemetryM.addData("loop time avg", averageLoopTime);
+
         telemetryM.addData("currentHeading", imu.get().inDeg);
+
         loopTimeTimer.reset();
     }
 }
