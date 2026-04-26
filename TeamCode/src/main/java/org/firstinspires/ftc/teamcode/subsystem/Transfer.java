@@ -1,9 +1,9 @@
 package org.firstinspires.ftc.teamcode.subsystem;
 
-import android.health.connect.datatypes.ExerciseLap;
-
 import com.bylazar.configurables.annotations.Configurable;
 import com.qualcomm.hardware.rev.RevColorSensorV3;
+import com.qualcomm.robotcore.hardware.PwmControl;
+import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
@@ -13,6 +13,7 @@ import dev.nextftc.core.commands.utility.InstantCommand;
 import dev.nextftc.core.subsystems.Subsystem;
 import dev.nextftc.ftc.ActiveOpMode;
 import dev.nextftc.hardware.impl.MotorEx;
+import dev.nextftc.hardware.impl.ServoEx;
 
 @Configurable
 public class Transfer implements Subsystem {
@@ -29,8 +30,8 @@ public class Transfer implements Subsystem {
     public boolean opModeOverride = false;
     public boolean offOverride = false;
     public final MotorEx motor1 = new MotorEx("intake2").reversed();
+    private final ServoEx blockerServo = new ServoEx("blocker");
     public RevColorSensorV3 colorSensorV3;
-    public ElapsedTime lastBallInTimer = new ElapsedTime();
 
     public ElapsedTime overrideCycleTimer = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
 
@@ -51,6 +52,11 @@ public class Transfer implements Subsystem {
     @Override
     public void initialize() {
         colorSensorV3 = ActiveOpMode.hardwareMap().get(RevColorSensorV3.class, "color_sensor");
+
+        blockerServo.getServo().setDirection(Servo.Direction.FORWARD);
+        PwmControl blockerServoPWM = (PwmControl) blockerServo.getServo();
+        // TODO: pwm range
+        blockerServoPWM.setPwmRange(new PwmControl.PwmRange(500, 2500, 20000));
     }
 
     @Override
@@ -58,10 +64,6 @@ public class Transfer implements Subsystem {
         if (colorGetTimer.milliseconds() > readDelay) {
             lastDistance = colorSensorV3.getDistance(DistanceUnit.MM);
             colorGetTimer.reset();
-
-            if (lastDistance < 50) {
-                lastBallInTimer.reset();
-            }
         }
 
         ActiveOpMode.telemetry().addData("lastDistance", lastDistance);
@@ -69,11 +71,13 @@ public class Transfer implements Subsystem {
         ActiveOpMode.telemetry().addData("is speed good", Shooter.INSTANCE.isSpeedGood());
 
         if (offOverride) {
+            blockerServo.setPosition(1);
             motor1.setPower(0);
             return;
         }
 
         if ((override || opModeOverride) && Shooter.INSTANCE.isSpeedGood()) {
+            blockerServo.setPosition(0);
             double cycleTime = overrideCycleTimer.milliseconds() % 800;
 
             if (cycleTime < (800-150)) {

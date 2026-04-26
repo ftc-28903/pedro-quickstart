@@ -5,6 +5,8 @@ import static org.firstinspires.ftc.teamcode.subsystem.BatteryVars.batteryVoltag
 import com.bylazar.configurables.annotations.Configurable;
 import com.bylazar.telemetry.PanelsTelemetry;
 import com.bylazar.telemetry.TelemetryManager;
+import com.qualcomm.robotcore.hardware.PwmControl;
+import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.hardware.VoltageSensor;
 
 import dev.nextftc.control.ControlSystem;
@@ -17,7 +19,6 @@ import dev.nextftc.core.subsystems.Subsystem;
 import dev.nextftc.ftc.ActiveOpMode;
 import dev.nextftc.hardware.impl.MotorEx;
 import dev.nextftc.hardware.impl.ServoEx;
-import org.firstinspires.ftc.teamcode.subsystem.BatteryVars;
 
 @Configurable
 public class Shooter implements Subsystem {
@@ -27,7 +28,7 @@ public class Shooter implements Subsystem {
     public VoltageSensor voltageSensor;
     public final MotorEx motor1 = new MotorEx("shooter1").reversed();
     public final MotorEx motor2 = new MotorEx("shooter2");
-    private final ServoEx servo1 = new ServoEx("hood1");
+    private final ServoEx hoodServo1 = new ServoEx("hood1");
     private TelemetryManager telemetryM;
 
     public static double shooterGoal = 1250;
@@ -111,6 +112,10 @@ public class Shooter implements Subsystem {
     public void initialize() {
         telemetryM = PanelsTelemetry.INSTANCE.getTelemetry();
         voltageSensor = ActiveOpMode.hardwareMap().get(VoltageSensor.class, "Control Hub");
+
+        hoodServo1.getServo().setDirection(Servo.Direction.FORWARD);
+        PwmControl hoodServo1PWM = (PwmControl) hoodServo1.getServo();
+        hoodServo1PWM.setPwmRange(new PwmControl.PwmRange(500, 2500, 10000));
     }
 
     public double calculatePower(double velocity) {
@@ -149,10 +154,9 @@ public class Shooter implements Subsystem {
             }
             controlSystem.setGoal(new KineticState(Double.MAX_VALUE, shooterGoal, Double.MAX_VALUE));
         }
-        servo1.setPosition(shooterAngle);
+        hoodServo1.setPosition(shooterAngle);
 
         double rawPower = calculatePower(shooterGoal) + controlSystem.calculate(new KineticState(Double.MAX_VALUE, Math.abs(motor1.getVelocity()), Double.MAX_VALUE));
-        rawPower = 1;
         double compensatedPower = rawPower * (voltageCalibration / batteryVoltage);
 
         // Prevent clipping explosions
