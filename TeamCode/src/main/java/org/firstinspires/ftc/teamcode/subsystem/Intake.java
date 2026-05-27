@@ -9,7 +9,7 @@ public class Intake implements Subsystem {
     public static final Intake INSTANCE = new Intake();
     private Intake() {}
 
-    public final MotorEx motor1 = new MotorEx("intake1").reversed();
+    public final MotorEx motor1 = new MotorEx("intake1");
 
     public Command spinUp = new InstantCommand(() -> motor1.setPower(1));
     public Command spinUpReverse = new InstantCommand(() -> motor1.setPower(-1));

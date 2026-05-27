@@ -33,7 +33,7 @@ public class MecanumTest extends NextFTCOpMode {
         addComponents(
                 BulkReadComponent.INSTANCE,
                 BindingsComponent.INSTANCE,
-                new SubsystemComponent(Shooter.INSTANCE, Intake.INSTANCE, Transfer.INSTANCE, Webcam.INSTANCE, Turret.INSTANCE)
+                new SubsystemComponent(Shooter.INSTANCE, Intake.INSTANCE, Transfer.INSTANCE, Turret.INSTANCE)
         );
     }
 
@@ -66,7 +66,7 @@ public class MecanumTest extends NextFTCOpMode {
     @Override
     public void onInit() {
         telemetryM = PanelsTelemetry.INSTANCE.getTelemetry();
-        Webcam.INSTANCE.init();
+        //Webcam.INSTANCE.init();
 
         Intake.INSTANCE.spinDown.schedule();
         Shooter.INSTANCE.spinDown.schedule();

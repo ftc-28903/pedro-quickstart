@@ -6,6 +6,7 @@ import com.qualcomm.robotcore.hardware.PwmControl;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
+import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 
 import dev.nextftc.core.commands.Command;
@@ -18,8 +19,8 @@ import dev.nextftc.hardware.impl.ServoEx;
 @Configurable
 public class Transfer implements Subsystem {
     public static final Transfer INSTANCE = new Transfer();
-    public static double detectDist = 80;
-    public static double maxMotorSpeed = 0.75;
+    public static double detectDist = 40;
+    public static double maxMotorSpeed = 1;
     public static double maxOverrideSpeed = 1;
     public static double readDelay = 0;
     private Transfer() {}
@@ -56,7 +57,7 @@ public class Transfer implements Subsystem {
         blockerServo.getServo().setDirection(Servo.Direction.FORWARD);
         PwmControl blockerServoPWM = (PwmControl) blockerServo.getServo();
         // TODO: pwm range
-        blockerServoPWM.setPwmRange(new PwmControl.PwmRange(500, 2500, 20000));
+        blockerServoPWM.setPwmRange(new PwmControl.PwmRange(500, 2500, 10000));
     }
 
     @Override
@@ -69,30 +70,29 @@ public class Transfer implements Subsystem {
         ActiveOpMode.telemetry().addData("lastDistance", lastDistance);
         ActiveOpMode.telemetry().addData("transfer power", motor1.getPower());
         ActiveOpMode.telemetry().addData("is speed good", Shooter.INSTANCE.isSpeedGood());
+        ActiveOpMode.telemetry().addData("intake2 amp", motor1.getMotor().getCurrent(CurrentUnit.MILLIAMPS));
+        ActiveOpMode.telemetry().addData("blocker position", blockerServo.getPosition());
 
         if (offOverride) {
-            blockerServo.setPosition(1);
+            blockerServo.setPosition(0);
             motor1.setPower(0);
             return;
         }
 
-        if ((override || opModeOverride) && Shooter.INSTANCE.isSpeedGood()) {
-            blockerServo.setPosition(0);
-            double cycleTime = overrideCycleTimer.milliseconds() % 800;
-
-            if (cycleTime < (800-150)) {
-                motor1.setPower(maxOverrideSpeed); // run
-            } else {
-                motor1.setPower(0); // pause
-            }
+        if ((override || opModeOverride)) {
+            blockerServo.setPosition(1);
+            motor1.setPower(maxOverrideSpeed);
 
             return;
         }
 
         if (lastDistance > detectDist) {
             motor1.setPower(maxMotorSpeed);
+            blockerServo.setPosition(0);
             return;
         }
+
+        blockerServo.setPosition(0);
 
         motor1.setPower(0);
     }

@@ -27,7 +27,6 @@ public class Shooter implements Subsystem {
 
     public VoltageSensor voltageSensor;
     public final MotorEx motor1 = new MotorEx("shooter1").reversed();
-    public final MotorEx motor2 = new MotorEx("shooter2");
     private final ServoEx hoodServo1 = new ServoEx("hood1");
     private TelemetryManager telemetryM;
 
@@ -154,7 +153,7 @@ public class Shooter implements Subsystem {
             }
             controlSystem.setGoal(new KineticState(Double.MAX_VALUE, shooterGoal, Double.MAX_VALUE));
         }
-        hoodServo1.setPosition(shooterAngle);
+        hoodServo1.setPosition(0.5);
 
         double rawPower = calculatePower(shooterGoal) + controlSystem.calculate(new KineticState(Double.MAX_VALUE, Math.abs(motor1.getVelocity()), Double.MAX_VALUE));
         double compensatedPower = rawPower * (voltageCalibration / batteryVoltage);
@@ -164,15 +163,11 @@ public class Shooter implements Subsystem {
         telemetryM.addData("shooterCompensatedPower", compensatedPower);
         if (shouldStop) {
             motor1.setPower(0);
-            motor2.setPower(0);
         } else {
             motor1.setPower(compensatedPower);
-            motor2.setPower(compensatedPower);
         }
         ActiveOpMode.telemetry().addData("shooter1 ticks/s", motor1.getVelocity());
         ActiveOpMode.telemetry().addData("shooter1 rpm", ticksToRPM(motor1.getVelocity(), 28));
-        ActiveOpMode.telemetry().addData("shooter2 ticks/s", motor2.getVelocity());
-        ActiveOpMode.telemetry().addData("shooter2 rpm", ticksToRPM(motor2.getVelocity(), 28));
         ActiveOpMode.telemetry().addData("cs power", rawPower);
         ActiveOpMode.telemetry().addData("cs goal", controlSystem.getGoal());
         ActiveOpMode.telemetry().addData("shouldStop", shouldStop);
