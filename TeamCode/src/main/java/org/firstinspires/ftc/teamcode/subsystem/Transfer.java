@@ -15,8 +15,6 @@ import dev.nextftc.ftc.ActiveOpMode;
 import dev.nextftc.hardware.impl.MotorEx;
 import dev.nextftc.hardware.impl.ServoEx;
 
-import static com.pedropathing.ivy.commands.Commands.instant;
-import static com.pedropathing.ivy.pedro.PedroCommands.*;
 import com.pedropathing.ivy.Command;
 
 @Configurable

@@ -7,11 +7,13 @@ import com.bylazar.configurables.annotations.Configurable;
 import com.bylazar.telemetry.PanelsTelemetry;
 import com.bylazar.telemetry.TelemetryManager;
 
+import com.pedropathing.ivy.Command;
+import com.pedropathing.ivy.commands.Commands;
+
 import dev.nextftc.control.ControlSystem;
 import dev.nextftc.control.KineticState;
 import dev.nextftc.control.feedback.PIDCoefficients;
 import dev.nextftc.control.feedforward.BasicFeedforwardParameters;
-import dev.nextftc.core.commands.Command;
 import dev.nextftc.core.commands.delays.WaitUntil;
 import dev.nextftc.core.commands.utility.InstantCommand;
 import dev.nextftc.core.subsystems.Subsystem;
@@ -45,18 +47,19 @@ public class Turret implements Subsystem {
 
     public boolean seesTag = false;
 
-    public Command disableTurret = new InstantCommand(() -> manualOverride = true);
-    public Command enableTurret = new InstantCommand(() -> manualOverride = false);
+    public Command disableTurret = Commands.instant(() -> manualOverride = true);
+    public Command enableTurret = Commands.instant(() -> manualOverride = false);
 
     // Commands to add/subtract from the offset dynamically (e.g., binding to gamepads)
-    public Command incrementOffset(double ticks) {
+    /*public Command incrementOffset(double ticks) {
         return new InstantCommand(() -> offsetTicks += ticks);
     }
     public Command decrementOffset(double ticks) {
         return new InstantCommand(() -> offsetTicks -= ticks);
-    }
+    }*/
 
-    public Command waitForTurret = new WaitUntil(() -> seesTag);
+    // TODO: deprecate
+    public Command waitForTurret = Commands.instant(() -> {});
 
     public static double kF = 0.08;
 

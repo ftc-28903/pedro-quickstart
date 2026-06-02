@@ -5,6 +5,7 @@ import static org.firstinspires.ftc.teamcode.subsystem.BatteryVars.batteryVoltag
 import com.bylazar.configurables.annotations.Configurable;
 import com.bylazar.telemetry.PanelsTelemetry;
 import com.bylazar.telemetry.TelemetryManager;
+import com.pedropathing.ivy.commands.Commands;
 import com.qualcomm.robotcore.hardware.PwmControl;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.hardware.VoltageSensor;
@@ -12,9 +13,8 @@ import com.qualcomm.robotcore.hardware.VoltageSensor;
 import dev.nextftc.control.ControlSystem;
 import dev.nextftc.control.KineticState;
 import dev.nextftc.control.feedback.PIDCoefficients;
-import dev.nextftc.core.commands.Command;
-import dev.nextftc.core.commands.delays.WaitUntil;
-import dev.nextftc.core.commands.utility.InstantCommand;
+import com.pedropathing.ivy.Command;
+
 import dev.nextftc.core.subsystems.Subsystem;
 import dev.nextftc.ftc.ActiveOpMode;
 import dev.nextftc.hardware.impl.MotorEx;
@@ -41,16 +41,17 @@ public class Shooter implements Subsystem {
             .velPid(pidCoefficients)
             .build();
 
-    public Command spinUp = new InstantCommand(() -> {
+    public Command spinUp = Commands.instant(() -> {
         shouldStop = false;
         //motor.setPower(1);
     });
 
-    public Command spinDown = new InstantCommand(() -> {
+    public Command spinDown = Commands.instant(() -> {
         shouldStop = true;
         //motor.setPower(0);
     });
-    public Command waitForSpeed = new WaitUntil(this::isSpeedGood);
+    public Command waitForSpeed = Command.build()
+            .setDone(this::isSpeedGood);
 
     // ticksPerSecond = RPM x 28 / 60
     public double ticksToRPM(double ticksPerSecond, double countsPerRevolution) {
