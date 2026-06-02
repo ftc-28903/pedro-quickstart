@@ -1,6 +1,7 @@
 package org.firstinspires.ftc.teamcode.subsystem;
 
 import com.bylazar.configurables.annotations.Configurable;
+import com.pedropathing.ivy.commands.Commands;
 import com.qualcomm.hardware.rev.RevColorSensorV3;
 import com.qualcomm.robotcore.hardware.PwmControl;
 import com.qualcomm.robotcore.hardware.Servo;
@@ -9,12 +10,14 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 
-import dev.nextftc.core.commands.Command;
-import dev.nextftc.core.commands.utility.InstantCommand;
 import dev.nextftc.core.subsystems.Subsystem;
 import dev.nextftc.ftc.ActiveOpMode;
 import dev.nextftc.hardware.impl.MotorEx;
 import dev.nextftc.hardware.impl.ServoEx;
+
+import static com.pedropathing.ivy.commands.Commands.instant;
+import static com.pedropathing.ivy.pedro.PedroCommands.*;
+import com.pedropathing.ivy.Command;
 
 @Configurable
 public class Transfer implements Subsystem {
@@ -39,18 +42,19 @@ public class Transfer implements Subsystem {
 
     public ElapsedTime overrideCycleTimer = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
 
-    public Command overrideOn = new InstantCommand(() -> {
+    // Refactored commands using instant()
+    public Command overrideOn = Commands.instant(() -> {
         override = true;
         overrideCycleTimer.reset();
     });
-    public Command spinUpReverse = new InstantCommand(() -> motor1.setPower(-1));
+    public Command spinUpReverse = Commands.instant(() -> motor1.setPower(-1));
 
-    public Command overrideOff = new InstantCommand(() -> override = false);
-    public Command opModeOverrideOn = new InstantCommand(() -> opModeOverride = true);
-    public Command opModeOverrideOff = new InstantCommand(() -> opModeOverride = false);
+    public Command overrideOff = Commands.instant(() -> override = false);
+    public Command opModeOverrideOn = Commands.instant(() -> opModeOverride = true);
+    public Command opModeOverrideOff = Commands.instant(() -> opModeOverride = false);
 
-    public Command offOverrideOn = new InstantCommand(() -> offOverride = true);
-    public Command offOverrideOff = new InstantCommand(() -> offOverride = false);
+    public Command offOverrideOn = Commands.instant(() -> offOverride = true);
+    public Command offOverrideOff = Commands.instant(() -> offOverride = false);
 
 
     @Override
@@ -85,6 +89,7 @@ public class Transfer implements Subsystem {
             return;
         }
 
+        // TODO: impl isSpeedInRange: returns if speed is possible for any of the hood angles: lower limit check basically
         if ((override || opModeOverride)) {
             if (wasBlockerClosed) {
                 blockerOpenTimer.reset();
