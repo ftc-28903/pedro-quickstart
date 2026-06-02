@@ -9,8 +9,8 @@ import com.pedropathing.paths.PathChain;
 public class TrajectoryFactory {
     public static TrajectoryFactory INSTANCE = new TrajectoryFactory();
 
-    Pose startPoseGoal = new Pose(23.667, 125.834, Math.toRadians(140));
-    Pose shootPoseGoal = new Pose(65,80,Math.toRadians(140));
+    public Pose startPoseGoal = new Pose(16, 106, Math.toRadians(180));
+    Pose shootPoseGoal = new Pose(64,80,Math.toRadians(140));
     Pose intakePoseGoal1 = new Pose(14, 80, Math.toRadians(180));
     Pose intakePoseGoal2 = new Pose(18, 58, Math.toRadians(180));
     Pose gatePrepare = new Pose(27, 71, Math.toRadians(180));

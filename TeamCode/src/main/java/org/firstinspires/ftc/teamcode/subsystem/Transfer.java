@@ -20,16 +20,19 @@ import dev.nextftc.hardware.impl.ServoEx;
 public class Transfer implements Subsystem {
     public static final Transfer INSTANCE = new Transfer();
     public static double detectDist = 40;
-    public static double maxMotorSpeed = 1;
+    public static double maxMotorSpeed = 0.6;
     public static double maxOverrideSpeed = 1;
     public static double readDelay = 0;
+    public static double blockerDelayMs = 150;
     private Transfer() {}
 
     public ElapsedTime colorGetTimer = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
+    public ElapsedTime blockerOpenTimer = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
     public double lastDistance = 0.0;
     public boolean override = false;
     public boolean opModeOverride = false;
     public boolean offOverride = false;
+    private boolean wasBlockerClosed = true;
     public final MotorEx motor1 = new MotorEx("intake2").reversed();
     private final ServoEx blockerServo = new ServoEx("blocker");
     public RevColorSensorV3 colorSensorV3;
@@ -56,15 +59,17 @@ public class Transfer implements Subsystem {
 
         blockerServo.getServo().setDirection(Servo.Direction.FORWARD);
         PwmControl blockerServoPWM = (PwmControl) blockerServo.getServo();
-        // TODO: pwm range
-        blockerServoPWM.setPwmRange(new PwmControl.PwmRange(500, 2500, 10000));
+        blockerServoPWM.setPwmRange(new PwmControl.PwmRange(1250, 1450, 10000));
+        blockerOpenTimer.reset();
     }
 
     @Override
     public void periodic() {
-        if (colorGetTimer.milliseconds() > readDelay) {
-            lastDistance = colorSensorV3.getDistance(DistanceUnit.MM);
-            colorGetTimer.reset();
+        if (!override && !opModeOverride && !offOverride) {
+            if (colorGetTimer.milliseconds() > readDelay) {
+                lastDistance = colorSensorV3.getDistance(DistanceUnit.MM);
+                colorGetTimer.reset();
+            }
         }
 
         ActiveOpMode.telemetry().addData("lastDistance", lastDistance);
@@ -76,24 +81,44 @@ public class Transfer implements Subsystem {
         if (offOverride) {
             blockerServo.setPosition(0);
             motor1.setPower(0);
+            wasBlockerClosed = true;
             return;
         }
 
         if ((override || opModeOverride)) {
-            blockerServo.setPosition(1);
-            motor1.setPower(maxOverrideSpeed);
+            if (wasBlockerClosed) {
+                blockerOpenTimer.reset();
+                wasBlockerClosed = false;
+            }
 
+            blockerServo.setPosition(1);
+
+            if (blockerOpenTimer.milliseconds() >= blockerDelayMs) {
+                motor1.setPower(maxOverrideSpeed);
+            } else {
+                motor1.setPower(0);
+            }
             return;
         }
 
         if (lastDistance > detectDist) {
-            motor1.setPower(maxMotorSpeed);
+            if (wasBlockerClosed) {
+                blockerOpenTimer.reset();
+                wasBlockerClosed = false;
+            }
+
             blockerServo.setPosition(0);
+
+            if (blockerOpenTimer.milliseconds() >= blockerDelayMs) {
+                motor1.setPower(maxMotorSpeed);
+            } else {
+                motor1.setPower(0);
+            }
             return;
         }
 
         blockerServo.setPosition(0);
-
         motor1.setPower(0);
+        wasBlockerClosed = true;
     }
 }

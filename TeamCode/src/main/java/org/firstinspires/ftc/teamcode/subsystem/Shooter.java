@@ -38,7 +38,7 @@ public class Shooter implements Subsystem {
     public static double voltageCalibration = 13.0;
 
     private final ControlSystem controlSystem = ControlSystem.builder()
-            .velSquID(pidCoefficients)
+            .velPid(pidCoefficients)
             .build();
 
     public Command spinUp = new InstantCommand(() -> {
@@ -92,7 +92,14 @@ public class Shooter implements Subsystem {
         /*if (x < 140) {
             return 0.5;
         }*/
-        return 0.6;
+        double a = -3.333e-06;
+        double b = 9.867e-03;
+        double c = -6.635e+00;
+        double y = a*(x*x)+(b*x)+(c);
+        if (y < 0.4) {
+            return 0.4;
+        }
+        return y;
     }
 
     public double calculateRPM(double x) {
@@ -114,6 +121,7 @@ public class Shooter implements Subsystem {
 
         hoodServo1.getServo().setDirection(Servo.Direction.FORWARD);
         PwmControl hoodServo1PWM = (PwmControl) hoodServo1.getServo();
+        // TODO: set pwm range
         hoodServo1PWM.setPwmRange(new PwmControl.PwmRange(500, 2500, 10000));
     }
 
@@ -140,22 +148,28 @@ public class Shooter implements Subsystem {
             ActiveOpMode.telemetry().addData("shooterDistanceY", distanceVerticalCm);
             double calculatedRPM = calculateRPM(distanceHorizontalCm);
             double calculatedTicks = rpmToTicks(calculatedRPM, 28);
-            double calculatedHood = calculateHood(distanceHorizontalCm);
+            //double calculatedHood = calculateHood(distanceHorizontalCm);
+            double calculatedHood = calculateHood(motor1.getVelocity());
 
             telemetryM.addData("shooterTicksEstimate", calculatedTicks);
             telemetryM.addData("shooterHoodEstimate", calculatedHood);
 
             shooterAngle = calculatedHood;
+            //shooterAngle = 0.5;
             shooterGoal = calculatedRPM;
             if (override) {
-                shooterAngle = overrideAngle;
+                //shooterAngle = overrideAngle;
                 shooterGoal = overrideVelo;
             }
             controlSystem.setGoal(new KineticState(Double.MAX_VALUE, shooterGoal, Double.MAX_VALUE));
         }
-        hoodServo1.setPosition(0.5);
+        hoodServo1.setPosition(shooterAngle);
 
-        double rawPower = calculatePower(shooterGoal) + controlSystem.calculate(new KineticState(Double.MAX_VALUE, Math.abs(motor1.getVelocity()), Double.MAX_VALUE));
+        //double rawPower = calculatePower(shooterGoal) + controlSystem.calculate(new KineticState(Double.MAX_VALUE, Math.abs(motor1.getVelocity()), Double.MAX_VALUE));
+        double rawPower = 1;
+        if(Math.abs(shooterGoal-motor1.getVelocity()) < 60) {
+            rawPower = calculatePower(shooterGoal);
+        }
         double compensatedPower = rawPower * (voltageCalibration / batteryVoltage);
 
         // Prevent clipping explosions

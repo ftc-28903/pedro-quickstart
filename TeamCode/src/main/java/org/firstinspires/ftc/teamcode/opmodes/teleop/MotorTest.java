@@ -20,7 +20,7 @@ public class MotorTest extends NextFTCOpMode {
         );
     }
 
-    private final MotorEx shooter1 = new MotorEx("shooter1");
+    private final MotorEx shooter1 = new MotorEx("back_right");
     //private final MotorEx motor1 = new MotorEx("1");
     //private final MotorEx motor2 = new MotorEx("2");
     //private final MotorEx motor3 = new MotorEx("3");
