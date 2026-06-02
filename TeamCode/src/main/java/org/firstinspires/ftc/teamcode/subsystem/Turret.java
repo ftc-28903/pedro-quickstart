@@ -26,7 +26,7 @@ public class Turret implements Subsystem {
     private TelemetryManager telemetryM;
 
     // --- Control System Tuning ---
-    public static PIDCoefficients pidCoefficients = new PIDCoefficients(0.005, 0, 0.0002); // Tune these for ticks!
+    public static PIDCoefficients pidCoefficients = new PIDCoefficients(0.005, 0, 0.0002);
     public static BasicFeedforwardParameters feedforwardParameters = new BasicFeedforwardParameters(0, 0, 0);
     private final ControlSystem controlSystem = ControlSystem.builder()
             .posPid(pidCoefficients)
@@ -37,14 +37,24 @@ public class Turret implements Subsystem {
     public static double MIN_ENCODER_TICKS = -370;
 
     public static boolean manualOverride = false;
-
-    // Changed from overrideSpeed to target encoder position override
     public static double overridePosition = 0;
+
+    // --- Offset Feature ---
+    // Change this value via telemetry/dashboard or commands to adjust the 0-degree point
+    public static double offsetTicks = 0;
 
     public boolean seesTag = false;
 
     public Command disableTurret = new InstantCommand(() -> manualOverride = true);
     public Command enableTurret = new InstantCommand(() -> manualOverride = false);
+
+    // Commands to add/subtract from the offset dynamically (e.g., binding to gamepads)
+    public Command incrementOffset(double ticks) {
+        return new InstantCommand(() -> offsetTicks += ticks);
+    }
+    public Command decrementOffset(double ticks) {
+        return new InstantCommand(() -> offsetTicks -= ticks);
+    }
 
     public Command waitForTurret = new WaitUntil(() -> seesTag);
 
@@ -60,10 +70,7 @@ public class Turret implements Subsystem {
         motor1.zero();
     }
 
-    double targetX = 0;
-    double targetY = 144;
-
-    public static double TICKS_PER_RADIAN=100;
+    public static double TICKS_PER_RADIAN = 100;
 
     @Override
     public void periodic() {
@@ -74,15 +81,16 @@ public class Turret implements Subsystem {
         telemetryM.addData("y", y);
         telemetryM.addData("heading", heading);
 
-        // 1. Calculate the target angle in the global world map
-        double target = Math.atan2(targetY - y, targetX - x);
+        // 1. Target heading is locked at 0 degrees (0 radians)
+        double targetWorldHeading = 0.0;
 
-        // 2. Calculate the angle relative to the robot's current face (0 = Straight Forward)
-        double steer = target - heading;
+        // 2. Calculate the angle relative to the robot's current face.
+        // Because the physical zero position faces away from the front of the robot,
+        // we subtract Math.PI (180 degrees) to rotate the reference frame forward.
+        double steer = targetWorldHeading - heading - Math.PI;
 
-        // 3. Normalize steer to the shortest path (-PI to PI)
-        while (steer > Math.PI)  steer -= 2 * Math.PI;
-        while (steer < -Math.PI) steer += 2 * Math.PI;
+        // 3. Normalize steer to the shortest path (-PI to PI) using atan2 for clean wrapping
+        steer = Math.atan2(Math.sin(steer), Math.cos(steer));
 
         // 4. Determine target position in encoder ticks
         double calculatedTargetTicks;
@@ -90,9 +98,8 @@ public class Turret implements Subsystem {
         if (manualOverride) {
             calculatedTargetTicks = overridePosition;
         } else {
-            // Because 0 ticks is straight forward, the 'steer' angle *is* our absolute target angle!
-            // We multiply it directly by TICKS_PER_RADIAN instead of adding to current position.
-            calculatedTargetTicks = steer * TICKS_PER_RADIAN;
+            // Base calculation to point at 0 degrees + user offset
+            calculatedTargetTicks = (steer * TICKS_PER_RADIAN) + offsetTicks;
         }
 
         // 5. Apply your Cable Anti-Tangle Soft Limits
@@ -116,6 +123,7 @@ public class Turret implements Subsystem {
         telemetryM.addData("turret power", motor1.getPower());
         telemetryM.addData("turret position", motor1.getCurrentPosition());
         telemetryM.addData("turret goalPos", controlSystem.getGoal().getPosition());
+        telemetryM.addData("turret offset ticks", offsetTicks);
         telemetryM.addData("turret steer error (deg)", Math.toDegrees(steer));
     }
 
