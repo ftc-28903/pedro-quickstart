@@ -1,21 +1,20 @@
 package org.firstinspires.ftc.teamcode.subsystem;
 
 import static org.firstinspires.ftc.teamcode.subsystem.BatteryVars.batteryVoltage;
-import static dev.nextftc.extensions.pedro.PedroComponent.follower;
 
 import com.bylazar.configurables.annotations.Configurable;
 import com.bylazar.telemetry.PanelsTelemetry;
 import com.bylazar.telemetry.TelemetryManager;
 
+import com.pedropathing.follower.Follower;
+import com.pedropathing.geometry.Pose;
 import com.pedropathing.ivy.Command;
 import com.pedropathing.ivy.commands.Commands;
+import com.pedropathing.math.MathFunctions;
 
 import dev.nextftc.control.ControlSystem;
 import dev.nextftc.control.KineticState;
 import dev.nextftc.control.feedback.PIDCoefficients;
-import dev.nextftc.control.feedforward.BasicFeedforwardParameters;
-import dev.nextftc.core.commands.delays.WaitUntil;
-import dev.nextftc.core.commands.utility.InstantCommand;
 import dev.nextftc.core.subsystems.Subsystem;
 import dev.nextftc.hardware.impl.MotorEx;
 
@@ -28,8 +27,7 @@ public class Turret implements Subsystem {
     private TelemetryManager telemetryM;
 
     // --- Control System Tuning ---
-    public static PIDCoefficients pidCoefficients = new PIDCoefficients(0.005, 0, 0.0002);
-    public static BasicFeedforwardParameters feedforwardParameters = new BasicFeedforwardParameters(0, 0, 0);
+    public static PIDCoefficients pidCoefficients = new PIDCoefficients(0.003, 0, 0.00014);
     private final ControlSystem controlSystem = ControlSystem.builder()
             .posPid(pidCoefficients)
             .build();
@@ -42,7 +40,6 @@ public class Turret implements Subsystem {
     public static double overridePosition = 0;
 
     // --- Offset Feature ---
-    // Change this value via telemetry/dashboard or commands to adjust the 0-degree point
     public static double offsetTicks = 0;
 
     public boolean seesTag = false;
@@ -50,18 +47,8 @@ public class Turret implements Subsystem {
     public Command disableTurret = Commands.instant(() -> manualOverride = true);
     public Command enableTurret = Commands.instant(() -> manualOverride = false);
 
-    // Commands to add/subtract from the offset dynamically (e.g., binding to gamepads)
-    /*public Command incrementOffset(double ticks) {
-        return new InstantCommand(() -> offsetTicks += ticks);
-    }
-    public Command decrementOffset(double ticks) {
-        return new InstantCommand(() -> offsetTicks -= ticks);
-    }*/
-
     // TODO: deprecate
     public Command waitForTurret = Commands.instant(() -> {});
-
-    public static double kF = 0.08;
 
     public boolean isTurretInRange() {
         return Math.abs(Webcam.INSTANCE.lastOffset) < 5;
@@ -73,54 +60,81 @@ public class Turret implements Subsystem {
         motor1.zero();
     }
 
-    public static double TICKS_PER_RADIAN = 100;
+    public static double TICKS_PER_RADIAN = 109.1;
+    public static double targetX = 2.0;
+    public static double targetY = 139.5;
+    public Follower follower;
+
+    public static double kS = 0.08;
+
+    // Convert 40mm to inches
+    public static final double TURRET_OFFSET_INCHES = -40.0 / 25.4;
+
+    /**
+     * Calculates the relative yaw angle the turret must turn to look at a target,
+     * factoring in the robot's heading and physical turret offset.
+     */
+    public double face(Pose targetPose, Pose robotPose) {
+        // --- 40mm Offset Compensation ---
+        // Adjusts robot center to actual turret center of rotation
+        double turretX = robotPose.getX() + (TURRET_OFFSET_INCHES * Math.cos(robotPose.getHeading()));
+        double turretY = robotPose.getY() + (TURRET_OFFSET_INCHES * Math.sin(robotPose.getHeading()));
+
+        // 1. Calculate the absolute world angle from the TURRET to the target
+        double angleToTargetFromTurret = Math.atan2(targetPose.getY() - turretY, targetPose.getX() - turretX);
+
+        // 2. Calculate angle relative to the robot's heading.
+        // Adding Math.PI preserves your original physical mapping (e.g., zero faces away from the front).
+        double robotAngleDiff = angleToTargetFromTurret - robotPose.getHeading() + Math.PI;
+
+        // 3. Normalize to shortest path (-PI to PI)
+        return normalizeAngle(robotAngleDiff);
+    }
+
+    /**
+     * Normalizes an angle into the range [-PI, PI]
+     */
+    public static double normalizeAngle(double angleRadians) {
+        double angle = angleRadians % (Math.PI * 2D);
+        if (angle <= -Math.PI) angle += Math.PI * 2D;
+        if (angle > Math.PI) angle -= Math.PI * 2D;
+        return angle;
+    }
 
     @Override
     public void periodic() {
-        double x = follower().getPose().getX();
-        double y = follower().getPose().getY();
-        double heading = follower().getPose().getHeading();
-        telemetryM.addData("x", x);
-        telemetryM.addData("y", y);
-        telemetryM.addData("heading", heading);
+        if (follower == null) return;
 
-        // 1. Target heading is locked at 0 degrees (0 radians)
-        double targetWorldHeading = 0.0;
+        Pose robotPose = follower.getPose();
+        Pose targetPose = new Pose(targetX, targetY, 0);
 
-        // 2. Calculate the angle relative to the robot's current face.
-        // Because the physical zero position faces away from the front of the robot,
-        // we subtract Math.PI (180 degrees) to rotate the reference frame forward.
-        double steer = targetWorldHeading - heading - Math.PI;
+        telemetryM.addData("robot x", robotPose.getX());
+        telemetryM.addData("robot y", robotPose.getY());
+        telemetryM.addData("heading", robotPose.getHeading());
 
-        // 3. Normalize steer to the shortest path (-PI to PI) using atan2 for clean wrapping
-        steer = Math.atan2(Math.sin(steer), Math.cos(steer));
+        // Calculate target relative angle via face() method
+        double steer = face(targetPose, robotPose);
 
-        // 4. Determine target position in encoder ticks
+        // Determine target position in encoder ticks
         double calculatedTargetTicks;
-
         if (manualOverride) {
             calculatedTargetTicks = overridePosition;
         } else {
-            // Base calculation to point at 0 degrees + user offset
             calculatedTargetTicks = (steer * TICKS_PER_RADIAN) + offsetTicks;
         }
 
-        // 5. Apply your Cable Anti-Tangle Soft Limits
-        calculatedTargetTicks = Math.max(MIN_ENCODER_TICKS, Math.min(MAX_ENCODER_TICKS, calculatedTargetTicks));
+        // Apply Cable Anti-Tangle Soft Limits
+        calculatedTargetTicks = MathFunctions.clamp(calculatedTargetTicks, MIN_ENCODER_TICKS, MAX_ENCODER_TICKS);
 
-        // 6. Feed the calculated ticks into your PID controller
+        // Feed calculated ticks into the PID controller
         controlSystem.setGoal(new KineticState(calculatedTargetTicks));
 
-        // 7. Motor power calculation
+        // Motor power calculation with kS and battery voltage compensation
         double rawPower = controlSystem.calculate(motor1.getState());
+        rawPower += Math.signum(rawPower) * kS;
         double compensatedPower = rawPower * (13.0 / batteryVoltage);
 
-        double ffPower = 0;
-        if (Math.abs(rawPower) > 0.01) {
-            ffPower = Math.signum(compensatedPower) * kF + compensatedPower;
-        }
-
-        motor1.setPower(ffPower);
+        motor1.setPower(compensatedPower);
 
         // --- Telemetry ---
         telemetryM.addData("turret power", motor1.getPower());

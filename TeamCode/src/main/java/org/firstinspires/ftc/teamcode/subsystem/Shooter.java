@@ -30,10 +30,16 @@ public class Shooter implements Subsystem {
     private final ServoEx hoodServo1 = new ServoEx("hood1");
     private TelemetryManager telemetryM;
 
+    // --- Manual Velocity Tracking Variables ---
+    private double lastTicks = 0;
+    private long lastTimeNanos = 0;
+    private double manualVelocityTicksPerSec = 0;
+    // ------------------------------------------
+
     public static double shooterGoal = 1250;
     public static double shooterPowerOverride = 0.1;
     public static double shooterAngle = 0.58;
-    public static PIDCoefficients pidCoefficients = new PIDCoefficients(0.00025, 0, 0.0);
+    public static PIDCoefficients pidCoefficients = new PIDCoefficients(0.0024, 0, 0.0);
     public static double velocityTolerance = 200;
     public static double voltageCalibration = 13.0;
 
@@ -43,12 +49,10 @@ public class Shooter implements Subsystem {
 
     public Command spinUp = Commands.instant(() -> {
         shouldStop = false;
-        //motor.setPower(1);
     });
 
     public Command spinDown = Commands.instant(() -> {
         shouldStop = true;
-        //motor.setPower(0);
     });
     public Command waitForSpeed = Command.build()
             .setDone(this::isSpeedGood);
@@ -63,17 +67,17 @@ public class Shooter implements Subsystem {
 
     public boolean isSpeedGood() {
         if (shouldStop) return true;
-        double speed = Math.abs(motor1.getVelocity());
-        double target = controlSystem.getGoal().getVelocity();
+        // Use manual velocity calculations
+        double speed = Math.abs(manualVelocityTicksPerSec);
+        double target = Math.abs(controlSystem.getGoal().getVelocity());
 
         ActiveOpMode.telemetry().addData("SHOOTERSPEED speed", speed);
         ActiveOpMode.telemetry().addData("SHOOTERTARGET target", target);
-        
-        return speed >= target - velocityTolerance;
+
+        return speed >= 1120;
     }
 
     public double calculateHood2(double x) {
-        // https://curve.fit/EYtVgRN7/single/20260128111854
         double a = -1.020e-06;
         double b = 9.253e-04;
         double c = -2.979e-01;
@@ -83,35 +87,30 @@ public class Shooter implements Subsystem {
     }
 
     public double calculateRPM2(double x) {
-        // https://curve.fit/zMDoKIss/single/20260128111013
         double m = 5.880e+00;
         double b = 1.955e+03;
         return m*x+b;
     }
 
-    public double calculateHood(double x) {
-        /*if (x < 140) {
-            return 0.5;
-        }*/
-        double a = -3.333e-06;
-        double b = 9.867e-03;
-        double c = -6.635e+00;
+    public double calculateHood4(double x) {
+        double a = -5.303e-06;
+        double b = 1.334e-02;
+        double c = -7.790e+00;
         double y = a*(x*x)+(b*x)+(c);
-        if (y < 0.4) {
-            return 0.4;
-        }
-        return y;
+        return Math.max(0.5, Math.min(y, 0.68));
+    }
+
+    public double calculateHood(double x) {
+        double a = 1.044e-05;
+        double b = -2.713e-02;
+        double c = 1.807e+01;
+        double y = a*(x*x)+(b*x)+(c);
+        return Math.max(0.45, Math.min(y, 0.63));
     }
 
     public double calculateRPM(double x) {
-        // https://curve.fit/KjezG82L/single/20260130071921
         double m = 1.244e+00;
         double b = 1.108e+03;
-
-        /*if (x < 140) {
-            return m*(x-30)+b;
-        }*/
-
         return m*x+b;
     }
 
@@ -122,23 +121,42 @@ public class Shooter implements Subsystem {
 
         hoodServo1.getServo().setDirection(Servo.Direction.FORWARD);
         PwmControl hoodServo1PWM = (PwmControl) hoodServo1.getServo();
-        // TODO: set pwm range
         hoodServo1PWM.setPwmRange(new PwmControl.PwmRange(500, 2500, 10000));
-    }
 
-    public double calculatePower(double velocity) {
-        velocity = velocity+30;
-        double m = 3.811e-04;
-        double b = 1.420e-01;
-        return m * velocity + b;
+        // Seed initial values to prevent a massive spike on the first periodic execution loop
+        lastTicks = motor1.getCurrentPosition();
+        lastTimeNanos = System.nanoTime();
     }
 
     public static boolean override = false;
     public static double overrideVelo = 0;
     public static double overrideAngle = 0.5;
 
+    public double calculatePower(double velocity) {
+        double m = 3.632e-04;
+        double b = 1.387e-01;
+        return m * velocity + b;
+    }
+
     @Override
     public void periodic() {
+        // --- 1. Manual Ticks/Second Calculation ---
+        long currentTimeNanos = System.nanoTime();
+        double currentTicks = motor1.getCurrentPosition();
+
+        long deltaTimeNanos = currentTimeNanos - lastTimeNanos;
+
+        if (deltaTimeNanos > 0) {
+            double deltaTicks = currentTicks - lastTicks;
+            double deltaTimeSeconds = deltaTimeNanos / 1_000_000_000.0;
+            manualVelocityTicksPerSec = deltaTicks / deltaTimeSeconds;
+        }
+
+        // Cache data for the next periodic cycle
+        lastTicks = currentTicks;
+        lastTimeNanos = currentTimeNanos;
+        // ------------------------------------------
+
         batteryVoltage = voltageSensor.getVoltage();
         telemetryM.addData("batteryVoltage", batteryVoltage);
 
@@ -149,31 +167,32 @@ public class Shooter implements Subsystem {
             ActiveOpMode.telemetry().addData("shooterDistanceY", distanceVerticalCm);
             double calculatedRPM = calculateRPM(distanceHorizontalCm);
             double calculatedTicks = rpmToTicks(calculatedRPM, 28);
-            //double calculatedHood = calculateHood(distanceHorizontalCm);
-            double calculatedHood = calculateHood(motor1.getVelocity());
+
+            // Replaced motor1.getVelocity() with manual calculation
+            double calculatedHood = calculateHood4(manualVelocityTicksPerSec);
 
             telemetryM.addData("shooterTicksEstimate", calculatedTicks);
             telemetryM.addData("shooterHoodEstimate", calculatedHood);
 
             shooterAngle = calculatedHood;
-            //shooterAngle = 0.5;
             shooterGoal = calculatedRPM;
             if (override) {
-                //shooterAngle = overrideAngle;
                 shooterGoal = overrideVelo;
+                //shooterAngle = overrideAngle;
             }
             controlSystem.setGoal(new KineticState(Double.MAX_VALUE, shooterGoal, Double.MAX_VALUE));
         }
         hoodServo1.setPosition(shooterAngle);
 
-        //double rawPower = calculatePower(shooterGoal) + controlSystem.calculate(new KineticState(Double.MAX_VALUE, Math.abs(motor1.getVelocity()), Double.MAX_VALUE));
         double rawPower = 1;
-        if(Math.abs(shooterGoal-motor1.getVelocity()) < 60) {
+        // Replaced motor1.getVelocity() with manual calculation
+        telemetryM.addData("IMPORTANT DATA", Math.abs(shooterGoal) - Math.abs(manualVelocityTicksPerSec));
+
+        if(Math.abs(shooterGoal) < Math.abs(manualVelocityTicksPerSec)) {
             rawPower = calculatePower(shooterGoal);
         }
-        double compensatedPower = rawPower * (voltageCalibration / batteryVoltage);
+        double compensatedPower = (rawPower >= 1) ? 1 : rawPower * (voltageCalibration / batteryVoltage);
 
-        // Prevent clipping explosions
         compensatedPower = Math.max(-1.0, Math.min(1.0, compensatedPower));
         telemetryM.addData("shooterCompensatedPower", compensatedPower);
         if (shouldStop) {
@@ -181,14 +200,16 @@ public class Shooter implements Subsystem {
         } else {
             motor1.setPower(compensatedPower);
         }
-        ActiveOpMode.telemetry().addData("shooter1 ticks/s", motor1.getVelocity());
-        ActiveOpMode.telemetry().addData("shooter1 rpm", ticksToRPM(motor1.getVelocity(), 28));
+
+        // Updated all telemetries to use manual velocity tracking values
+        ActiveOpMode.telemetry().addData("shooter1 ticks/s", manualVelocityTicksPerSec);
+        ActiveOpMode.telemetry().addData("shooter1 rpm", ticksToRPM(manualVelocityTicksPerSec, 28));
         ActiveOpMode.telemetry().addData("cs power", rawPower);
         ActiveOpMode.telemetry().addData("cs goal", controlSystem.getGoal());
         ActiveOpMode.telemetry().addData("shouldStop", shouldStop);
 
         telemetryM.addData("shooterTargetVelo", controlSystem.getGoal().getVelocity());
-        telemetryM.addData("shooterCurrentVelo", Math.abs(motor1.getVelocity()));
+        telemetryM.addData("shooterCurrentVelo", Math.abs(manualVelocityTicksPerSec));
     }
 
     public static final Shooter INSTANCE = new Shooter();

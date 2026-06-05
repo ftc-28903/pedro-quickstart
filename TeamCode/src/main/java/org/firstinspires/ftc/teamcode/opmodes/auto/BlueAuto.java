@@ -6,7 +6,9 @@ import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 import org.firstinspires.ftc.teamcode.subsystem.Intake;
 import org.firstinspires.ftc.teamcode.subsystem.Shooter;
 import org.firstinspires.ftc.teamcode.subsystem.Transfer;
+import org.firstinspires.ftc.teamcode.subsystem.Turret;
 import org.firstinspires.ftc.teamcode.subsystem.Webcam;
+import org.firstinspires.ftc.teamcode.utils.CGHelpers;
 
 import dev.nextftc.core.components.SubsystemComponent;
 import dev.nextftc.extensions.pedro.PedroComponent;
@@ -16,6 +18,7 @@ import dev.nextftc.ftc.components.BulkReadComponent;
 import static dev.nextftc.extensions.pedro.PedroComponent.follower;
 
 import com.bylazar.telemetry.PanelsTelemetry;
+import com.bylazar.telemetry.TelemetryManager;
 import com.pedropathing.follower.Follower;
 import com.pedropathing.geometry.Pose;
 import com.pedropathing.ivy.Scheduler;
@@ -25,23 +28,30 @@ import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 public class BlueAuto extends NextFTCOpMode {
     public BlueAuto() {
         addComponents(
-                new SubsystemComponent(),
+                new SubsystemComponent(Intake.INSTANCE, Shooter.INSTANCE, Transfer.INSTANCE, Turret.INSTANCE),
                 BulkReadComponent.INSTANCE
         );
     }
 
     public Follower follower;
+    private TelemetryManager telemetryM;
 
     @Override
     public void onInit() {
+        telemetryM = PanelsTelemetry.INSTANCE.getTelemetry();
+
         Scheduler.reset();
         follower = Constants.createFollower(hardwareMap);
         TrajectoryFactory.INSTANCE.buildTrajectories(follower);
-        follower.setStartingPose(TrajectoryFactory.INSTANCE.startPoseGoal);
+        follower.setStartingPose(TrajectoryFactory.INSTANCE.startPose);
+
+        schedule(CGHelpers.getInitGroup());
+        Turret.INSTANCE.follower = follower;
     }
 
     @Override
     public void onStartButtonPressed() {
+        schedule(CGHelpers.getStartGroup());
         schedule(AutoRoutines.INSTANCE.getTwelveattemptgroup(follower));
     }
     
@@ -54,6 +64,6 @@ public class BlueAuto extends NextFTCOpMode {
         telemetry.addData("y", follower.getPose().getY());
         telemetry.addData("heading", follower.getPose().getHeading());
         telemetry.update();
-        PanelsTelemetry.INSTANCE.getTelemetry().update(telemetry);
+        telemetryM.update(telemetry);
     }
 }

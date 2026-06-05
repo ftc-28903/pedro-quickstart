@@ -33,7 +33,7 @@ public class PedroTest extends NextFTCOpMode {
     }
 
     private TelemetryManager telemetryM;
-    private Follower follower;
+    public static Follower follower;
     public static Pose startingPose;
 
     public boolean slowMode = false;
@@ -44,8 +44,9 @@ public class PedroTest extends NextFTCOpMode {
         telemetryM = PanelsTelemetry.INSTANCE.getTelemetry();
 
         follower = Constants.createFollower(hardwareMap);
-        follower.setStartingPose(startingPose == null ? TrajectoryFactory.INSTANCE.startPoseGoal : startingPose);
+        follower.setStartingPose(startingPose == null ? TrajectoryFactory.INSTANCE.startPose : startingPose);
         follower.update();
+        Turret.INSTANCE.follower = follower;
 
         Intake.INSTANCE.spinDown.schedule();
         Shooter.INSTANCE.spinDown.schedule();
@@ -74,7 +75,15 @@ public class PedroTest extends NextFTCOpMode {
                 .whenBecomesTrue(() -> Shooter.INSTANCE.spinUp.schedule())
                 .whenBecomesFalse(() -> Shooter.INSTANCE.spinDown.schedule());
 
-        follower.startTeleOpDrive();
+        Gamepads.gamepad1().leftTrigger().greaterThan(0.6).toggleOnBecomesTrue()
+                .whenBecomesTrue(() -> Intake.INSTANCE.spinUp.schedule())
+                .whenBecomesFalse(() -> Intake.INSTANCE.spinDown.schedule());
+
+        Gamepads.gamepad1().rightTrigger().greaterThan(0.6)
+                .whenBecomesTrue(() -> Transfer.INSTANCE.overrideOn.schedule())
+                .whenBecomesFalse(() -> Transfer.INSTANCE.overrideOff.schedule());
+
+        follower.startTeleOpDrive(true);
     }
 
     @Override

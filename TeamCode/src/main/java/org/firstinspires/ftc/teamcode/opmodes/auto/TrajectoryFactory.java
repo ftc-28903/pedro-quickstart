@@ -9,37 +9,28 @@ import com.pedropathing.paths.PathChain;
 public class TrajectoryFactory {
     public static TrajectoryFactory INSTANCE = new TrajectoryFactory();
 
-    public Pose startPoseGoal = new Pose(16, 106, Math.toRadians(180));
-    Pose shootPoseGoal = new Pose(64,80,Math.toRadians(140));
-    Pose intakePoseGoal1 = new Pose(14, 80, Math.toRadians(180));
-    Pose intakePoseGoal2 = new Pose(18, 58, Math.toRadians(180));
-    Pose gatePrepare = new Pose(27, 71, Math.toRadians(180));
-    Pose gateOpen = new Pose(15, 69, Math.toRadians(180));
-    Pose intakePoseGoal3 = new Pose(17, 34, Math.toRadians(180));
-    Pose parkPoseGoal = new Pose(63, 64, Math.toRadians(140));
+    // Define Poses from your original PathChain
+    public Pose startPose = new Pose(15.000, 109.000, Math.toRadians(180));
+    Pose shootPose1 = new Pose(50.000, 80.000);
+    Pose intakeLine1Pose = new Pose(15.5000, 80.000);
+    Pose intakeLine2Pose = new Pose(2.000, 57.000);
+    Pose shootPose2 = new Pose(61.000, 76.000);
+    Pose gateOpenPose = new Pose(14,61);
 
-    public PathChain goalShoot;
-    public PathChain goalIntake1;
-    public PathChain goalGatePrepare;
-    public PathChain goalGateOpen;
-    public PathChain goalGateOpenShoot;
-    public PathChain goalIntake2;
-    public PathChain goalIntake2Shoot;
-    public PathChain goalIntake3;
-    public PathChain goalIntake3Shoot;
-    public PathChain goalPark;
+    // PathChains (Normal)
+    public PathChain goalStartShoot;
+    public PathChain shootIntakeLine1;
+    public PathChain intakeLine1Shoot;
+    public PathChain shootLine2Intake;
+    public PathChain intakeLine2Shoot;
+    public PathChain shoot2GateOpen;
 
-    // Mirrored versions of all paths
-    public PathChain goalShootMirrored;
-    public PathChain goalIntake1Mirrored;
-    public PathChain goalGatePrepareMirrored;
-    public PathChain goalGateOpenMirrored;
-    public PathChain goalGateOpenShootMirrored;
-    public PathChain goalIntake2Mirrored;
-    public PathChain goalIntake2ShootMirrored;
-    public PathChain goalIntake3Mirrored;
-    public PathChain goalIntake3ShootMirrored;
-    public PathChain goalParkMirrored;
+    // PathChains (Mirrored)
+    public PathChain goalStartShootMirrored;
+    public PathChain goalIntakeLine1Mirrored;
+    public PathChain intakeLine1ShootMirrored;
+    public PathChain shootLine2IntakeMirrored;
+    public PathChain intakeLine2ShootMirrored;
 
     public void buildTrajectories(Follower follower) {
         buildNormalTrajectories(follower);
@@ -47,184 +38,122 @@ public class TrajectoryFactory {
     }
 
     public void buildNormalTrajectories(Follower follower) {
-        goalShoot = follower.pathBuilder().addPath(
-                        new BezierLine(
-                                startPoseGoal,
-                                shootPoseGoal
-                        )
-                ).setLinearHeadingInterpolation(startPoseGoal.getHeading(), shootPoseGoal.getHeading())
-                .build();
-
-        goalIntake1 = follower.pathBuilder().addPath(
-                        new BezierLine(
-                                shootPoseGoal,
-                                intakePoseGoal1
-                        )
-                ).setLinearHeadingInterpolation(shootPoseGoal.getHeading(), intakePoseGoal1.getHeading())
-                .build();
-
-        goalGatePrepare = follower.pathBuilder().addPath(
-                        new BezierLine(
-                                intakePoseGoal1,
-                                gatePrepare
-                        )
-                ).setConstantHeadingInterpolation(gatePrepare.getHeading())
-                .build();
-
-        goalGateOpen = follower.pathBuilder().addPath(
-                        new BezierLine(
-                                gatePrepare,
-                                gateOpen
-                        )
-                ).setConstantHeadingInterpolation(gateOpen.getHeading())
-                .build();
-
-        goalGateOpenShoot = follower.pathBuilder().addPath(
-                        new BezierLine(
-                                gateOpen,
-                                shootPoseGoal
-                        )
-                ).setLinearHeadingInterpolation(gateOpen.getHeading(), shootPoseGoal.getHeading())
-                .build();
-
-        goalIntake2 = follower.pathBuilder().addPath(
+        // Path 1: Curve to shootPose1
+        goalStartShoot = follower.pathBuilder().addPath(
                         new BezierCurve(
-                                shootPoseGoal,
-                                new Pose(68.234, 55.564),
-                                intakePoseGoal2
+                                startPose,
+                                new Pose(41.419, 100.892),
+                                shootPose1
                         )
-                ).setLinearHeadingInterpolation(shootPoseGoal.getHeading(), intakePoseGoal2.getHeading())
+                ).setConstantHeadingInterpolation(Math.toRadians(180))
                 .build();
 
-        goalIntake2Shoot = follower.pathBuilder().addPath(
+        // Path 2: Line to intakeLine1Pose
+        shootIntakeLine1 = follower.pathBuilder().addPath(
                         new BezierLine(
-                                intakePoseGoal2,
-                                shootPoseGoal
+                                shootPose1,
+                                intakeLine1Pose
                         )
-                ).setLinearHeadingInterpolation(intakePoseGoal2.getHeading(), shootPoseGoal.getHeading())
+                ).setConstantHeadingInterpolation(Math.toRadians(180))
                 .build();
 
-        goalIntake3 = follower.pathBuilder().addPath(
+        // Path 3: Line back to shootPose1 with a heading turn
+        intakeLine1Shoot = follower.pathBuilder().addPath(
+                        new BezierLine(
+                                intakeLine1Pose,
+                                shootPose1
+                        )
+                ).setLinearHeadingInterpolation(Math.toRadians(180), Math.toRadians(220))
+                .build();
+
+        // Path 4: Curve to intakeLine2Pose
+        shootLine2Intake = follower.pathBuilder().addPath(
                         new BezierCurve(
-                                shootPoseGoal,
-                                new Pose(58.553, 20.039),
-                                intakePoseGoal3
+                                shootPose1,
+                                new Pose(46, 50),
+                                intakeLine2Pose
                         )
-                ).setLinearHeadingInterpolation(shootPoseGoal.getHeading(), intakePoseGoal3.getHeading())
+                ).setLinearHeadingInterpolation(Math.toRadians(220), Math.toRadians(180))
                 .build();
 
-        goalIntake3Shoot = follower.pathBuilder().addPath(
-                        new BezierLine(
-                                intakePoseGoal3,
-                                shootPoseGoal
+        // Path 5: Curve to shootPose2
+        intakeLine2Shoot = follower.pathBuilder().addPath(
+                        new BezierCurve(
+                                intakeLine2Pose,
+                                new Pose(20.824, 47.696),
+                                shootPose2
                         )
-                ).setLinearHeadingInterpolation(intakePoseGoal3.getHeading(), shootPoseGoal.getHeading())
+                ).setConstantHeadingInterpolation(Math.toRadians(210))
                 .build();
 
-        goalPark = follower.pathBuilder().addPath(
-                        new BezierLine(
-                                shootPoseGoal,
-                                parkPoseGoal
-                        )
-                ).setConstantHeadingInterpolation(parkPoseGoal.getHeading())
+        shoot2GateOpen = follower.pathBuilder().addPath(
+                    new BezierLine(
+                            shootPose2,
+                            gateOpenPose
+                    )
+                ).setLinearHeadingInterpolation(Math.toRadians(210),Math.toRadians(180))
                 .build();
     }
 
     public void buildMirroredTrajectories(Follower follower) {
-        // Create mirrored poses
-        Pose startPoseGoalMirrored = startPoseGoal.mirror();
-        Pose shootPoseGoalMirrored = shootPoseGoal.mirror();
-        Pose intakePoseGoal1Mirrored = intakePoseGoal1.mirror();
-        Pose intakePoseGoal2Mirrored = intakePoseGoal2.mirror();
-        Pose gatePrepareMirrored = gatePrepare.mirror();
-        Pose gateOpenMirrored = gateOpen.mirror();
-        Pose intakePoseGoal3Mirrored = intakePoseGoal3.mirror();
-        Pose parkPoseGoalMirrored = parkPoseGoal.mirror();
+        // Mirrored Poses
+        Pose startPoseMirrored = new Pose(15.000, 109.000, Math.toRadians(180)).mirror();
+        Pose shootPose1Mirrored = shootPose1.mirror();
+        Pose intakeLine1PoseMirrored = intakeLine1Pose.mirror();
+        Pose intakeLine2PoseMirrored = intakeLine2Pose.mirror();
+        Pose shootPose2Mirrored = shootPose2.mirror();
 
-        // Mirror the control points too
-        Pose controlPoint2Mirrored = new Pose(68.234, 55.564, 0).mirror();
-        Pose controlPoint3Mirrored = new Pose(58.553, 20.039, 0).mirror();
+        // Mirrored Control Points (Named after the paths they belong to)
+        Pose goalStartShootControlMirrored = new Pose(41.419, 100.892, 0).mirror();
+        Pose shootLine2IntakeControlMirrored = new Pose(60.595, 55.092, 0).mirror();
+        Pose intakeLine2ShootControlMirrored = new Pose(20.824, 47.696, 0).mirror();
 
-        goalShootMirrored = follower.pathBuilder().addPath(
-                        new BezierLine(
-                                startPoseGoalMirrored,
-                                shootPoseGoalMirrored
-                        )
-                ).setLinearHeadingInterpolation(startPoseGoalMirrored.getHeading(), shootPoseGoalMirrored.getHeading())
-                .build();
-
-        goalIntake1Mirrored = follower.pathBuilder().addPath(
-                        new BezierLine(
-                                shootPoseGoalMirrored,
-                                intakePoseGoal1Mirrored
-                        )
-                ).setLinearHeadingInterpolation(shootPoseGoalMirrored.getHeading(), intakePoseGoal1Mirrored.getHeading())
-                .build();
-
-        goalGatePrepareMirrored = follower.pathBuilder().addPath(
-                        new BezierLine(
-                                intakePoseGoal1Mirrored,
-                                gatePrepareMirrored
-                        )
-                ).setConstantHeadingInterpolation(gatePrepareMirrored.getHeading())
-                .build();
-
-        goalGateOpenMirrored = follower.pathBuilder().addPath(
-                        new BezierLine(
-                                gatePrepareMirrored,
-                                gateOpenMirrored
-                        )
-                ).setConstantHeadingInterpolation(gateOpenMirrored.getHeading())
-                .build();
-
-        goalGateOpenShootMirrored = follower.pathBuilder().addPath(
-                        new BezierLine(
-                                gateOpenMirrored,
-                                shootPoseGoalMirrored
-                        )
-                ).setLinearHeadingInterpolation(gateOpenMirrored.getHeading(), shootPoseGoalMirrored.getHeading())
-                .build();
-
-        goalIntake2Mirrored = follower.pathBuilder().addPath(
+        // goalStartShoot Mirrored
+        goalStartShootMirrored = follower.pathBuilder().addPath(
                         new BezierCurve(
-                                shootPoseGoalMirrored,
-                                controlPoint2Mirrored,
-                                intakePoseGoal2Mirrored
+                                startPoseMirrored,
+                                goalStartShootControlMirrored,
+                                shootPose1Mirrored
                         )
-                ).setLinearHeadingInterpolation(shootPoseGoalMirrored.getHeading(), intakePoseGoal2Mirrored.getHeading())
+                ).setConstantHeadingInterpolation(startPoseMirrored.getHeading())
                 .build();
 
-        goalIntake2ShootMirrored = follower.pathBuilder().addPath(
+        // goalIntakeLine1 Mirrored
+        goalIntakeLine1Mirrored = follower.pathBuilder().addPath(
                         new BezierLine(
-                                intakePoseGoal2Mirrored,
-                                shootPoseGoalMirrored
+                                shootPose1Mirrored,
+                                intakeLine1PoseMirrored
                         )
-                ).setLinearHeadingInterpolation(intakePoseGoal2Mirrored.getHeading(), shootPoseGoalMirrored.getHeading())
+                ).setConstantHeadingInterpolation(startPoseMirrored.getHeading())
                 .build();
 
-        goalIntake3Mirrored = follower.pathBuilder().addPath(
+        // intakeLine1Shoot Mirrored
+        intakeLine1ShootMirrored = follower.pathBuilder().addPath(
+                        new BezierLine(
+                                intakeLine1PoseMirrored,
+                                shootPose1Mirrored
+                        )
+                ).setLinearHeadingInterpolation(startPoseMirrored.getHeading(), new Pose(0, 0, Math.toRadians(220)).mirror().getHeading())
+                .build();
+
+        // shootLine2Intake Mirrored
+        shootLine2IntakeMirrored = follower.pathBuilder().addPath(
                         new BezierCurve(
-                                shootPoseGoalMirrored,
-                                controlPoint3Mirrored,
-                                intakePoseGoal3Mirrored
+                                shootPose1Mirrored,
+                                shootLine2IntakeControlMirrored,
+                                intakeLine2PoseMirrored
                         )
-                ).setLinearHeadingInterpolation(shootPoseGoalMirrored.getHeading(), intakePoseGoal3Mirrored.getHeading())
+                ).setLinearHeadingInterpolation(new Pose(0, 0, Math.toRadians(220)).mirror().getHeading(), startPoseMirrored.getHeading())
                 .build();
 
-        goalIntake3ShootMirrored = follower.pathBuilder().addPath(
-                        new BezierLine(
-                                intakePoseGoal3Mirrored,
-                                shootPoseGoalMirrored
+        // intakeLine2Shoot Mirrored
+        intakeLine2ShootMirrored = follower.pathBuilder().addPath(
+                        new BezierCurve(
+                                intakeLine2PoseMirrored,
+                                intakeLine2ShootControlMirrored,
+                                shootPose2Mirrored
                         )
-                ).setLinearHeadingInterpolation(intakePoseGoal3Mirrored.getHeading(), shootPoseGoalMirrored.getHeading())
-                .build();
-
-        goalParkMirrored = follower.pathBuilder().addPath(
-                        new BezierLine(
-                                shootPoseGoalMirrored,
-                                parkPoseGoalMirrored
-                        )
-                ).setConstantHeadingInterpolation(parkPoseGoalMirrored.getHeading())
+                ).setConstantHeadingInterpolation(new Pose(0, 0, Math.toRadians(210)).mirror().getHeading())
                 .build();
     }
 }

@@ -72,7 +72,7 @@ public class MecanumTest extends NextFTCOpMode {
     @Override
     public void onInit() {
         telemetryM = PanelsTelemetry.INSTANCE.getTelemetry();
-        follower().setStartingPose(TrajectoryFactory.INSTANCE.startPoseGoal);
+        follower().setStartingPose(TrajectoryFactory.INSTANCE.startPose);
         //Webcam.INSTANCE.init();
 
         Intake.INSTANCE.spinDown.schedule();

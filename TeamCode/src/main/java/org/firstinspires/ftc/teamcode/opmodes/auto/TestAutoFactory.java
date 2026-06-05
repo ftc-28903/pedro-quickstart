@@ -325,89 +325,11 @@ public class TestAutoFactory {
 
     public CommandGroup getGoalGroup() {
         return new SequentialGroup(
-                Turret.INSTANCE.disableTurret,
-                new InstantCommand(() -> resetHeading(0)),
-                Shooter.INSTANCE.spinUp,
-                Intake.INSTANCE.spinUp,
-                straight(-100, 0.3, 0),
-                turnTo(-5),
-                straight(-1350, 0.7, -5),
-                Turret.INSTANCE.enableTurret,
-                //new Delay(1),
-                turnTo(0),
-                //Turret.INSTANCE.waitForTurret,
-                Transfer.INSTANCE.overrideOn,
-                new Delay(3),
-                Transfer.INSTANCE.overrideOff,
-                turnTo(42),
-                straight(1200,0.8, 42),
-                //new Delay(1),
-                straight(-1200,0.8, 42),
-                //turnTo(0),
-                //Turret.INSTANCE.waitForTurret,
-                Transfer.INSTANCE.overrideOn,
-                new Delay(3),
-                Transfer.INSTANCE.overrideOff,
-                turnTo(-54),
-                straight(-1100, 0.8, -54),
-                turnTo(30),
-                straight(1400, 0.8, 30),
-                straight(-200, 0.8, 30),
-                turnTo(75),
-                straight(-1400, 0.8, 75),
-                //Turret.INSTANCE.waitForTurret,
-                Transfer.INSTANCE.overrideOn,
-                new Delay(3),
-                Transfer.INSTANCE.overrideOff,
-                //strafeLeft(50),
-
-                straight(1300, 1, 75),
-
-
-                Shooter.INSTANCE.spinDown,
-                Intake.INSTANCE.spinDown
-                //turnTo(-54)
         );
     }
 
     public CommandGroup getFarzoneGroup() {
         return new SequentialGroup(
-                Turret.INSTANCE.enableTurret,
-                Shooter.INSTANCE.spinUp,
-                Intake.INSTANCE.spinUp,
-                //straight(200, 0.4),
-                turnTo(0),
-                Turret.INSTANCE.waitForTurret,
-                new Delay(2),
-                Transfer.INSTANCE.overrideOn,
-                new Delay(5),
-                Transfer.INSTANCE.overrideOff,
-                turnTo(0),
-                straight(850, 0.7, 0),
-                turnTo(90),
-                straight(1600, 0.7, 90),
-                turnTo(60),
-                straight(-1350, 0.7, 60),
-                Turret.INSTANCE.waitForTurret,
-                new Delay(1),
-                Transfer.INSTANCE.overrideOn,
-                new Delay(5),
-                Transfer.INSTANCE.overrideOff,
-                straight(100, 0.7, 60),
-                turnTo(90),
-                straight(950, 0.7, 90),
-                turnTo(80),
-                //straight(-1050, 0.7, 80),
-                //Turret.INSTANCE.waitForTurret,
-                //new Delay(1),
-                //Transfer.INSTANCE.overrideOn,
-                //new Delay(3),
-                //Transfer.INSTANCE.overrideOff,
-
-
-                Shooter.INSTANCE.spinDown,
-                Intake.INSTANCE.spinDown,
-                straight(700, 1, 0)
         );
     }
 
@@ -420,43 +342,6 @@ public class TestAutoFactory {
 
     public CommandGroup getAutoGroup() {
         return new SequentialGroup(
-                Shooter.INSTANCE.spinUp,
-                Intake.INSTANCE.spinUp,
-                straight(-100, 0.6, 0),
-                Shooter.INSTANCE.waitForSpeed,
-                // shoot preload
-                Transfer.INSTANCE.overrideOn,
-                new Delay(3),
-                Transfer.INSTANCE.overrideOff,
-
-                // 1st line intake
-                turnTo(-55),
-                straight(100, 0.6, -55),
-                straight(-100, 0.6, -55),
-
-                // 1st line shoot
-                turnTo(0),
-                Transfer.INSTANCE.overrideOn,
-                new Delay(3),
-                Transfer.INSTANCE.overrideOff,
-
-                // 2nd line intake
-                turnTo(-52),
-                strafeLeft(50),
-                straight(120, 0.6, -52),
-                straight(-120, 0.6, -52),
-                strafeRight(-50),
-
-                // 2nd line shoot
-                turnTo(0),
-                Transfer.INSTANCE.overrideOn,
-                new Delay(3),
-                Transfer.INSTANCE.overrideOff,
-
-                // park
-                Shooter.INSTANCE.spinDown,
-                Intake.INSTANCE.spinDown,
-                strafeLeft(50)
         );
     }
 

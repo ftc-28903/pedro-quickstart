@@ -20,7 +20,8 @@ public class MotorTest extends NextFTCOpMode {
         );
     }
 
-    private final MotorEx shooter1 = new MotorEx("back_right");
+    private final MotorEx intake1 = new MotorEx("intake1");
+    private final MotorEx intake2 = new MotorEx("intake2").reversed();
     //private final MotorEx motor1 = new MotorEx("1");
     //private final MotorEx motor2 = new MotorEx("2");
     //private final MotorEx motor3 = new MotorEx("3");
@@ -33,6 +34,8 @@ public class MotorTest extends NextFTCOpMode {
 
     @Override
     public void onStartButtonPressed() {
+        intake1.setPower(1.0);
+        intake2.setPower(0.6);
         //motor2.setPower(1);
         /*Gamepads.gamepad1().a()
                 .whenBecomesTrue(() -> motor0.setPower(1))
@@ -50,7 +53,7 @@ public class MotorTest extends NextFTCOpMode {
 
     @Override
     public void onUpdate() {
-        ActiveOpMode.telemetry().addData("shooter1 rotations", shooter1.getCurrentPosition());
+        //ActiveOpMode.telemetry().addData("shooter1 rotations", shooter1.getCurrentPosition());
         ActiveOpMode.telemetry().update();
     }
 }

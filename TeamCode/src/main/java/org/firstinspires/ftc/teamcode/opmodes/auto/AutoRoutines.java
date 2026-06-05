@@ -1,58 +1,75 @@
 package org.firstinspires.ftc.teamcode.opmodes.auto;
 
+import static com.pedropathing.ivy.groups.Groups.parallel;
 import static com.pedropathing.ivy.groups.Groups.sequential;
 import static com.pedropathing.ivy.pedro.PedroCommands.follow;
+import static com.pedropathing.ivy.commands.Commands.*;
 
 import com.pedropathing.follower.Follower;
 import com.pedropathing.ivy.Command;
 
 import org.firstinspires.ftc.teamcode.subsystem.Intake;
-import org.firstinspires.ftc.teamcode.subsystem.Shooter;
 import org.firstinspires.ftc.teamcode.subsystem.Transfer;
-
-import dev.nextftc.core.commands.delays.Delay;
-import dev.nextftc.core.commands.groups.CommandGroup;
-import dev.nextftc.core.commands.groups.ParallelGroup;
-import dev.nextftc.core.commands.groups.SequentialGroup;
-import dev.nextftc.extensions.pedro.FollowPath;
 
 public class AutoRoutines {
     public static AutoRoutines INSTANCE = new AutoRoutines();
     public int shootDelay = 2000;
     public int gateOpenDelay = 3000;
+
+    public static Command getShootStartGroup() {
+        return parallel(
+                Intake.INSTANCE.spinUp,
+                Transfer.INSTANCE.opModeOverrideOn
+        );
+    }
+
+    public static Command getShootStopGroup() {
+        return parallel(
+                Intake.INSTANCE.spinDown,
+                Transfer.INSTANCE.opModeOverrideOff
+        );
+    }
+
+    public static Command getShootCommand() {
+        return sequential(
+                getShootStartGroup(),
+                waitMs(2500),
+                getShootStopGroup()
+        );
+    }
+
     public Command getTwelveattemptgroup(Follower follower) {
         return sequential(
-                //Shooter.INSTANCE.spinUp,
+                // Preload: Curve to shooting position
+                follow(follower, TrajectoryFactory.INSTANCE.goalStartShoot),
+                waitMs(2500),
+                getShootCommand(),
+                //Transfer.INSTANCE.overrideOff,
+                // new Delay(shootDelay),
+                // Transfer.INSTANCE.opModeOverrideOff,
 
-                // preload
-                follow(follower, TrajectoryFactory.INSTANCE.goalShoot),
-                //new Delay(shootDelay),
-                //Transfer.INSTANCE.opModeOverrideOff,
-
-                // intake 1 + gate open
-                follow(follower, TrajectoryFactory.INSTANCE.goalIntake1),
+                // Intake 1: Line to first intake line
+                Intake.INSTANCE.spinUp,
+                follow(follower, TrajectoryFactory.INSTANCE.shootIntakeLine1),
                 //Intake.INSTANCE.spinDown,
-                follow(follower, TrajectoryFactory.INSTANCE.goalGatePrepare),
-                follow(follower, TrajectoryFactory.INSTANCE.goalGateOpen),
-                //new Delay(gateOpenDelay),
-                follow(follower, TrajectoryFactory.INSTANCE.goalGateOpenShoot),
-                //Intake.INSTANCE.spinUp,
-                //Transfer.INSTANCE.opModeOverrideOn,
-                //new Delay(shootDelay),
-                //Transfer.INSTANCE.opModeOverrideOff,
 
-                // intake 2
-                follow(follower, TrajectoryFactory.INSTANCE.goalIntake2),
-                follow(follower, TrajectoryFactory.INSTANCE.goalIntake2Shoot),
+                // Shoot 1: Line back to shoot position with heading turn
+                follow(follower, TrajectoryFactory.INSTANCE.intakeLine1Shoot),
+                getShootCommand(),
 
-                // intake 3
-                follow(follower, TrajectoryFactory.INSTANCE.goalIntake3),
-                follow(follower, TrajectoryFactory.INSTANCE.goalIntake3Shoot),
-                //Transfer.INSTANCE.opModeOverrideOn,
-                //new Delay(shootDelay),
-                //Transfer.INSTANCE.opModeOverrideOff,
+                // Intake 2: Curve down to second intake line
+                Intake.INSTANCE.spinUp,
+                follow(follower, TrajectoryFactory.INSTANCE.shootLine2Intake),
+                //Intake.INSTANCE.spinDown,
 
-                follow(follower, TrajectoryFactory.INSTANCE.goalPark)
+                // Shoot 2: Curve back to shooting position
+                follow(follower, TrajectoryFactory.INSTANCE.intakeLine2Shoot),
+                getShootCommand(),
+
+                follow(follower, TrajectoryFactory.INSTANCE.shoot2GateOpen)
+                // Transfer.INSTANCE.opModeOverrideOn,
+                // new Delay(shootDelay),
+                // Transfer.INSTANCE.opModeOverrideOff,
         );
     }
 }

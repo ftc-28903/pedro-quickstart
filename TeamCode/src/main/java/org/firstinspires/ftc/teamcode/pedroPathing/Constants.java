@@ -8,6 +8,8 @@ import com.pedropathing.ftc.FollowerBuilder;
 import com.pedropathing.ftc.drivetrains.MecanumConstants;
 import com.pedropathing.ftc.localization.Encoder;
 import com.pedropathing.ftc.localization.constants.DriveEncoderConstants;
+import com.pedropathing.ftc.localization.constants.ThreeWheelConstants;
+import com.pedropathing.ftc.localization.constants.ThreeWheelIMUConstants;
 import com.pedropathing.ftc.localization.constants.TwoWheelConstants;
 import com.pedropathing.paths.PathConstraints;
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
@@ -23,14 +25,19 @@ public class Constants {
 
     public static PathConstraints pathConstraints = new PathConstraints(0.9,100,1,1);
 
-    public static TwoWheelConstants localizerConstants = new TwoWheelConstants()
-            .forwardEncoder_HardwareMapName("back_left")
+    public static ThreeWheelIMUConstants localizerConstants = new ThreeWheelIMUConstants()
+            .leftEncoder_HardwareMapName("back_left")
+            .rightEncoder_HardwareMapName("intake1")
             .strafeEncoder_HardwareMapName("back_right")
             .strafeEncoderDirection(Encoder.REVERSE)
-            .forwardTicksToInches(11.754E-4)
-            .strafeTicksToInches(11.754E-4)
-            .forwardPodY(-7.23)
+            .leftEncoderDirection(Encoder.REVERSE)
+            .rightEncoderDirection(Encoder.FORWARD)
+            .leftPodY(-7.23)
+            .rightPodY(7.23)
             .strafePodX(0)
+            .forwardTicksToInches(0.00105688)
+            .strafeTicksToInches(0.00105688)
+            .turnTicksToInches(0.00105688)
             .IMU_HardwareMapName("imu")
             .IMU_Orientation(
                     new RevHubOrientationOnRobot(
@@ -56,7 +63,7 @@ public class Constants {
         return new FollowerBuilder(followerConstants, hardwareMap)
                 .mecanumDrivetrain(driveConstants)
                 .pathConstraints(pathConstraints)
-                .twoWheelLocalizer(localizerConstants)
+                .threeWheelIMULocalizer(localizerConstants)
                 .build();
     }
 }
