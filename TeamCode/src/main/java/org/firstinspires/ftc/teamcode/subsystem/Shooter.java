@@ -22,7 +22,11 @@ import dev.nextftc.hardware.impl.ServoEx;
 
 @Configurable
 public class Shooter implements Subsystem {
-    public boolean shouldStop = true;
+    public enum State {
+        RUNNING,
+        STOPPED
+    }
+    public State state = State.STOPPED;
     private Shooter() { }
 
     public VoltageSensor voltageSensor;
@@ -48,11 +52,11 @@ public class Shooter implements Subsystem {
             .build();
 
     public Command spinUp = Commands.instant(() -> {
-        shouldStop = false;
+        state = State.RUNNING;
     });
 
     public Command spinDown = Commands.instant(() -> {
-        shouldStop = true;
+        state = State.STOPPED;
     });
     public Command waitForSpeed = Command.build()
             .setDone(this::isSpeedGood);
@@ -66,7 +70,7 @@ public class Shooter implements Subsystem {
     }
 
     public boolean isSpeedGood() {
-        if (shouldStop) return true;
+        if (state == State.STOPPED) return true;
         // Use manual velocity calculations
         double speed = Math.abs(manualVelocityTicksPerSec);
         double target = Math.abs(controlSystem.getGoal().getVelocity());
@@ -128,7 +132,11 @@ public class Shooter implements Subsystem {
         lastTimeNanos = System.nanoTime();
     }
 
-    public static boolean override = false;
+    public enum Mode {
+        AUTO,
+        MANUAL
+    }
+    public static Mode mode = Mode.AUTO;
     public static double overrideVelo = 0;
     public static double overrideAngle = 0.5;
 
@@ -176,7 +184,7 @@ public class Shooter implements Subsystem {
 
             shooterAngle = calculatedHood;
             shooterGoal = calculatedRPM;
-            if (override) {
+            if (mode == Mode.MANUAL) {
                 shooterGoal = overrideVelo;
                 //shooterAngle = overrideAngle;
             }
@@ -195,7 +203,7 @@ public class Shooter implements Subsystem {
 
         compensatedPower = Math.max(-1.0, Math.min(1.0, compensatedPower));
         telemetryM.addData("shooterCompensatedPower", compensatedPower);
-        if (shouldStop) {
+        if (state == State.STOPPED) {
             motor1.setPower(0);
         } else {
             motor1.setPower(compensatedPower);
@@ -206,7 +214,8 @@ public class Shooter implements Subsystem {
         ActiveOpMode.telemetry().addData("shooter1 rpm", ticksToRPM(manualVelocityTicksPerSec, 28));
         ActiveOpMode.telemetry().addData("cs power", rawPower);
         ActiveOpMode.telemetry().addData("cs goal", controlSystem.getGoal());
-        ActiveOpMode.telemetry().addData("shouldStop", shouldStop);
+        ActiveOpMode.telemetry().addData("state", state);
+        ActiveOpMode.telemetry().addData("mode", mode);
 
         telemetryM.addData("shooterTargetVelo", controlSystem.getGoal().getVelocity());
         telemetryM.addData("shooterCurrentVelo", Math.abs(manualVelocityTicksPerSec));

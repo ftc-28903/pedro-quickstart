@@ -54,7 +54,6 @@ public class AutoCalibrateTest2 extends NextFTCOpMode {
         Intake.INSTANCE.spinDown.schedule();
         Shooter.INSTANCE.spinDown.schedule();
         Transfer.INSTANCE.overrideOff.schedule();
-        Transfer.INSTANCE.opModeOverrideOff.schedule();
 
         Transfer.INSTANCE.offOverrideOn.schedule();
 

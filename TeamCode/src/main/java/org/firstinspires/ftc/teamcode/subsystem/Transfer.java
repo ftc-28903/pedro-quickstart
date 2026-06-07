@@ -39,10 +39,14 @@ public class Transfer implements Subsystem {
     public ElapsedTime blockerOpenTimer = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
     public ElapsedTime pulseTimer = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS); // Timer to track the 650ms cycle
 
+    public enum State {
+        AUTO,
+        OVERRIDE,
+        OFF_OVERRIDE
+    }
+
+    public State state = State.AUTO;
     public double lastDistance = 0.0;
-    public boolean override = false;
-    public boolean opModeOverride = false;
-    public boolean offOverride = false;
     private boolean wasBlockerClosed = true;
     private boolean wasTransferRunning = false; // Tracks if transfer was active in the last loop to reset pulse timer
 
@@ -55,17 +59,23 @@ public class Transfer implements Subsystem {
 
     // Refactored commands using instant()
     public Command overrideOn = Commands.instant(() -> {
-        override = true;
+        state = State.OVERRIDE;
         overrideCycleTimer.reset();
     });
     public Command spinUpReverse = Commands.instant(() -> motor1.setPower(-1));
 
-    public Command overrideOff = Commands.instant(() -> override = false);
-    public Command opModeOverrideOn = Commands.instant(() -> opModeOverride = true);
-    public Command opModeOverrideOff = Commands.instant(() -> opModeOverride = false);
+    public Command overrideOff = Commands.instant(() -> {
+        if (state == State.OVERRIDE) {
+            state = State.AUTO;
+        }
+    });
 
-    public Command offOverrideOn = Commands.instant(() -> offOverride = true);
-    public Command offOverrideOff = Commands.instant(() -> offOverride = false);
+    public Command offOverrideOn = Commands.instant(() -> state = State.OFF_OVERRIDE);
+    public Command offOverrideOff = Commands.instant(() -> {
+        if (state == State.OFF_OVERRIDE) {
+            state = State.AUTO;
+        }
+    });
 
     @Override
     public void initialize() {
@@ -98,7 +108,7 @@ public class Transfer implements Subsystem {
 
     @Override
     public void periodic() {
-        if (!override && !opModeOverride && !offOverride) {
+        if (state == State.AUTO) {
             if (colorGetTimer.milliseconds() > readDelay) {
                 lastDistance = colorSensorV3.getDistance(DistanceUnit.MM);
                 colorGetTimer.reset();
@@ -110,8 +120,9 @@ public class Transfer implements Subsystem {
         ActiveOpMode.telemetry().addData("is speed good", Shooter.INSTANCE.isSpeedGood());
         ActiveOpMode.telemetry().addData("intake2 amp", motor1.getMotor().getCurrent(CurrentUnit.MILLIAMPS));
         ActiveOpMode.telemetry().addData("blocker position", blockerServo.getPosition());
+        ActiveOpMode.telemetry().addData("transfer state", state);
 
-        if (offOverride) {
+        if (state == State.OFF_OVERRIDE) {
             blockerServo.setPosition(0);
             motor1.setPower(0);
             wasBlockerClosed = true;
@@ -120,7 +131,7 @@ public class Transfer implements Subsystem {
         }
 
         // Check if the system actually wants to run the transfer
-        boolean wantsToRun = (override || opModeOverride) || (lastDistance > detectDist);
+        boolean wantsToRun = (state == State.OVERRIDE) || (lastDistance > detectDist);
 
         if (wantsToRun) {
             // If the transfer just started running this loop, reset the pulse timer so it always starts by running
@@ -132,8 +143,8 @@ public class Transfer implements Subsystem {
             wasTransferRunning = false;
         }
 
-        // --- OVERRIDE / OP MODE OVERRIDE LOGIC ---
-        if ((override || opModeOverride)) {
+        // --- OVERRIDE LOGIC ---
+        if (state == State.OVERRIDE) {
             if (wasBlockerClosed) {
                 blockerOpenTimer.reset();
                 wasBlockerClosed = false;

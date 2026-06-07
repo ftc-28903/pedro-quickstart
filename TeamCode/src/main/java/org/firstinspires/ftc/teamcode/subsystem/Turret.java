@@ -20,7 +20,6 @@ import dev.nextftc.hardware.impl.MotorEx;
 
 @Configurable
 public class Turret implements Subsystem {
-    public boolean shouldStop = true;
     private Turret() { }
 
     public final MotorEx motor1 = new MotorEx("turret1").reversed();
@@ -36,16 +35,18 @@ public class Turret implements Subsystem {
     public static double MAX_ENCODER_TICKS = 370;
     public static double MIN_ENCODER_TICKS = -370;
 
-    public static boolean manualOverride = false;
+    public enum Mode {
+        AUTO,
+        MANUAL
+    }
+    public static Mode mode = Mode.AUTO;
     public static double overridePosition = 0;
 
     // --- Offset Feature ---
     public static double offsetTicks = 0;
 
-    public boolean seesTag = false;
-
-    public Command disableTurret = Commands.instant(() -> manualOverride = true);
-    public Command enableTurret = Commands.instant(() -> manualOverride = false);
+    public Command disableTurret = Commands.instant(() -> mode = Mode.MANUAL);
+    public Command enableTurret = Commands.instant(() -> mode = Mode.AUTO);
 
     // TODO: deprecate
     public Command waitForTurret = Commands.instant(() -> {});
@@ -117,7 +118,7 @@ public class Turret implements Subsystem {
 
         // Determine target position in encoder ticks
         double calculatedTargetTicks;
-        if (manualOverride) {
+        if (mode == Mode.MANUAL) {
             calculatedTargetTicks = overridePosition;
         } else {
             calculatedTargetTicks = (steer * TICKS_PER_RADIAN) + offsetTicks;

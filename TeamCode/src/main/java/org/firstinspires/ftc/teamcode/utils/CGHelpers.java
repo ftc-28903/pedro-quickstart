@@ -15,7 +15,6 @@ public class CGHelpers {
                 Intake.INSTANCE.spinDown,
                 Shooter.INSTANCE.spinDown,
                 Transfer.INSTANCE.overrideOff,
-                Transfer.INSTANCE.opModeOverrideOff,
                 Turret.INSTANCE.disableTurret,
                 Transfer.INSTANCE.offOverrideOn
         );

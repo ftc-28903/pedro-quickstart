@@ -19,14 +19,14 @@ public class AutoRoutines {
     public static Command getShootStartGroup() {
         return parallel(
                 Intake.INSTANCE.spinUp,
-                Transfer.INSTANCE.opModeOverrideOn
+                Transfer.INSTANCE.overrideOn
         );
     }
 
     public static Command getShootStopGroup() {
         return parallel(
                 Intake.INSTANCE.spinDown,
-                Transfer.INSTANCE.opModeOverrideOff
+                Transfer.INSTANCE.overrideOff
         );
     }
 
@@ -46,7 +46,6 @@ public class AutoRoutines {
                 getShootCommand(),
                 //Transfer.INSTANCE.overrideOff,
                 // new Delay(shootDelay),
-                // Transfer.INSTANCE.opModeOverrideOff,
 
                 // Intake 1: Line to first intake line
                 Intake.INSTANCE.spinUp,
@@ -67,9 +66,8 @@ public class AutoRoutines {
                 getShootCommand(),
 
                 follow(follower, TrajectoryFactory.INSTANCE.shoot2GateOpen)
-                // Transfer.INSTANCE.opModeOverrideOn,
+                // Transfer.INSTANCE.overrideOn,
                 // new Delay(shootDelay),
-                // Transfer.INSTANCE.opModeOverrideOff,
         );
     }
 }
