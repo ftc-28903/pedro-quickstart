@@ -53,7 +53,6 @@ public class Transfer implements Subsystem {
     public final MotorEx motor1 = new MotorEx("intake2").reversed();
     private final ServoEx blockerServo = new ServoEx("blocker");
     public RevColorSensorV3 colorSensorV3;
-    private TelemetryManager telemetryM;
 
     public ElapsedTime overrideCycleTimer = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
 
@@ -80,7 +79,6 @@ public class Transfer implements Subsystem {
     @Override
     public void initialize() {
         colorSensorV3 = ActiveOpMode.hardwareMap().get(RevColorSensorV3.class, "color_sensor");
-        telemetryM = PanelsTelemetry.INSTANCE.getTelemetry();
 
         blockerServo.getServo().setDirection(Servo.Direction.FORWARD);
         PwmControl blockerServoPWM = (PwmControl) blockerServo.getServo();
@@ -115,7 +113,7 @@ public class Transfer implements Subsystem {
             }
         }
 
-        telemetryM.addData("lastDistance", lastDistance);
+        ActiveOpMode.telemetry().addData("lastDistance", lastDistance);
         ActiveOpMode.telemetry().addData("transfer power", motor1.getPower());
         ActiveOpMode.telemetry().addData("is speed good", Shooter.INSTANCE.isSpeedGood());
         ActiveOpMode.telemetry().addData("intake2 amp", motor1.getMotor().getCurrent(CurrentUnit.MILLIAMPS));

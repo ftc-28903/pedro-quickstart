@@ -16,6 +16,7 @@ import dev.nextftc.control.ControlSystem;
 import dev.nextftc.control.KineticState;
 import dev.nextftc.control.feedback.PIDCoefficients;
 import dev.nextftc.core.subsystems.Subsystem;
+import dev.nextftc.ftc.ActiveOpMode;
 import dev.nextftc.hardware.impl.MotorEx;
 
 @Configurable
@@ -23,7 +24,6 @@ public class Turret implements Subsystem {
     private Turret() { }
 
     public final MotorEx motor1 = new MotorEx("turret1").reversed();
-    private TelemetryManager telemetryM;
 
     // --- Control System Tuning ---
     public static PIDCoefficients pidCoefficients = new PIDCoefficients(0.003, 0, 0.00014);
@@ -57,7 +57,6 @@ public class Turret implements Subsystem {
 
     @Override
     public void initialize() {
-        telemetryM = PanelsTelemetry.INSTANCE.getTelemetry();
         motor1.zero();
     }
 
@@ -109,9 +108,9 @@ public class Turret implements Subsystem {
         Pose robotPose = follower.getPose();
         Pose targetPose = new Pose(targetX, targetY, 0);
 
-        telemetryM.addData("robot x", robotPose.getX());
-        telemetryM.addData("robot y", robotPose.getY());
-        telemetryM.addData("heading", robotPose.getHeading());
+        ActiveOpMode.telemetry().addData("robot x", robotPose.getX());
+        ActiveOpMode.telemetry().addData("robot y", robotPose.getY());
+        ActiveOpMode.telemetry().addData("heading", robotPose.getHeading());
 
         // Calculate target relative angle via face() method
         double steer = face(targetPose, robotPose);
@@ -138,11 +137,11 @@ public class Turret implements Subsystem {
         motor1.setPower(compensatedPower);
 
         // --- Telemetry ---
-        telemetryM.addData("turret power", motor1.getPower());
-        telemetryM.addData("turret position", motor1.getCurrentPosition());
-        telemetryM.addData("turret goalPos", controlSystem.getGoal().getPosition());
-        telemetryM.addData("turret offset ticks", offsetTicks);
-        telemetryM.addData("turret steer error (deg)", Math.toDegrees(steer));
+        ActiveOpMode.telemetry().addData("turret power", motor1.getPower());
+        ActiveOpMode.telemetry().addData("turret position", motor1.getCurrentPosition());
+        ActiveOpMode.telemetry().addData("turret goalPos", controlSystem.getGoal().getPosition());
+        ActiveOpMode.telemetry().addData("turret offset ticks", offsetTicks);
+        ActiveOpMode.telemetry().addData("turret steer error (deg)", Math.toDegrees(steer));
     }
 
     public static final Turret INSTANCE = new Turret();

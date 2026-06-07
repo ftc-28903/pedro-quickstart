@@ -17,6 +17,7 @@ import org.firstinspires.ftc.teamcode.subsystem.Turret;
 
 import dev.nextftc.core.components.BindingsComponent;
 import dev.nextftc.core.components.SubsystemComponent;
+import dev.nextftc.ftc.ActiveOpMode;
 import dev.nextftc.ftc.Gamepads;
 import dev.nextftc.ftc.NextFTCOpMode;
 import dev.nextftc.ftc.components.BulkReadComponent;
@@ -88,7 +89,6 @@ public class PedroTest extends NextFTCOpMode {
     @Override
     public void onUpdate() {
         follower.update();
-        telemetryM.update();
         Scheduler.execute();
 
         if (!slowMode) follower.setTeleOpDrive(
@@ -103,5 +103,8 @@ public class PedroTest extends NextFTCOpMode {
                 -gamepad1.right_stick_x * slowModeMultiplier,
                 true // Robot Centric
         );
+
+        ActiveOpMode.telemetry().update();
+        telemetryM.update(ActiveOpMode.telemetry());
     }
 }

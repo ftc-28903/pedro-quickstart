@@ -32,7 +32,6 @@ public class Shooter implements Subsystem {
     public VoltageSensor voltageSensor;
     public final MotorEx motor1 = new MotorEx("shooter1").reversed();
     private final ServoEx hoodServo1 = new ServoEx("hood1");
-    private TelemetryManager telemetryM;
 
     // --- Manual Velocity Tracking Variables ---
     private double lastTicks = 0;
@@ -120,7 +119,6 @@ public class Shooter implements Subsystem {
 
     @Override
     public void initialize() {
-        telemetryM = PanelsTelemetry.INSTANCE.getTelemetry();
         voltageSensor = ActiveOpMode.hardwareMap().get(VoltageSensor.class, "Control Hub");
 
         hoodServo1.getServo().setDirection(Servo.Direction.FORWARD);
@@ -166,7 +164,7 @@ public class Shooter implements Subsystem {
         // ------------------------------------------
 
         batteryVoltage = voltageSensor.getVoltage();
-        telemetryM.addData("batteryVoltage", batteryVoltage);
+        ActiveOpMode.telemetry().addData("batteryVoltage", batteryVoltage);
 
         if(true) {
             double distanceHorizontalCm = Webcam.INSTANCE.lastDistanceComponent.horizontal;
@@ -179,8 +177,8 @@ public class Shooter implements Subsystem {
             // Replaced motor1.getVelocity() with manual calculation
             double calculatedHood = calculateHood4(manualVelocityTicksPerSec);
 
-            telemetryM.addData("shooterTicksEstimate", calculatedTicks);
-            telemetryM.addData("shooterHoodEstimate", calculatedHood);
+            ActiveOpMode.telemetry().addData("shooterTicksEstimate", calculatedTicks);
+            ActiveOpMode.telemetry().addData("shooterHoodEstimate", calculatedHood);
 
             shooterAngle = calculatedHood;
             shooterGoal = calculatedRPM;
@@ -193,8 +191,6 @@ public class Shooter implements Subsystem {
         hoodServo1.setPosition(shooterAngle);
 
         double rawPower = 1;
-        // Replaced motor1.getVelocity() with manual calculation
-        telemetryM.addData("IMPORTANT DATA", Math.abs(shooterGoal) - Math.abs(manualVelocityTicksPerSec));
 
         if(Math.abs(shooterGoal) < Math.abs(manualVelocityTicksPerSec)) {
             rawPower = calculatePower(shooterGoal);
@@ -202,7 +198,7 @@ public class Shooter implements Subsystem {
         double compensatedPower = (rawPower >= 1) ? 1 : rawPower * (voltageCalibration / batteryVoltage);
 
         compensatedPower = Math.max(-1.0, Math.min(1.0, compensatedPower));
-        telemetryM.addData("shooterCompensatedPower", compensatedPower);
+        ActiveOpMode.telemetry().addData("shooterCompensatedPower", compensatedPower);
         if (state == State.STOPPED) {
             motor1.setPower(0);
         } else {
@@ -212,13 +208,14 @@ public class Shooter implements Subsystem {
         // Updated all telemetries to use manual velocity tracking values
         ActiveOpMode.telemetry().addData("shooter1 ticks/s", manualVelocityTicksPerSec);
         ActiveOpMode.telemetry().addData("shooter1 rpm", ticksToRPM(manualVelocityTicksPerSec, 28));
-        ActiveOpMode.telemetry().addData("cs power", rawPower);
-        ActiveOpMode.telemetry().addData("cs goal", controlSystem.getGoal());
+        //ActiveOpMode.telemetry().addData("cs power", rawPower);
+        //ActiveOpMode.telemetry().addData("cs goal", controlSystem.getGoal());
         ActiveOpMode.telemetry().addData("state", state);
         ActiveOpMode.telemetry().addData("mode", mode);
 
-        telemetryM.addData("shooterTargetVelo", controlSystem.getGoal().getVelocity());
-        telemetryM.addData("shooterCurrentVelo", Math.abs(manualVelocityTicksPerSec));
+        ActiveOpMode.telemetry().addData("shooterTargetVelo", controlSystem.getGoal().getVelocity());
+        ActiveOpMode.telemetry().addData("shooterCurrentVelo", Math.abs(manualVelocityTicksPerSec));
+        ActiveOpMode.telemetry().addData("shooterVeloOffset", Math.abs(shooterGoal) - Math.abs(manualVelocityTicksPerSec));
     }
 
     public static final Shooter INSTANCE = new Shooter();
