@@ -22,7 +22,7 @@ import com.pedropathing.ivy.Command;
 @Configurable
 public class Transfer implements Subsystem {
     public static final Transfer INSTANCE = new Transfer();
-    public static double detectDist = 35;
+    public static double detectDist = 70;
     public static double maxMotorSpeed = 0.6;
     // TODO: CHANGE THIS for flywheel
     public static double maxOverrideSpeed = 1.0;
@@ -31,7 +31,7 @@ public class Transfer implements Subsystem {
 
     // Pulse timing configurations
     public static double pulseRunTimeMs = 500;
-    public static double pulsePauseTimeMs = 150;
+    public static double pulsePauseTimeMs = 0;
 
     private Transfer() {}
 
@@ -55,6 +55,7 @@ public class Transfer implements Subsystem {
     public RevColorSensorV3 colorSensorV3;
 
     public ElapsedTime overrideCycleTimer = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
+    private TelemetryManager telemetryM;
 
     // Refactored commands using instant()
     public Command overrideOn = Commands.instant(() -> {
@@ -78,11 +79,13 @@ public class Transfer implements Subsystem {
 
     @Override
     public void initialize() {
+        telemetryM = PanelsTelemetry.INSTANCE.getTelemetry();
+
         colorSensorV3 = ActiveOpMode.hardwareMap().get(RevColorSensorV3.class, "color_sensor");
 
         blockerServo.getServo().setDirection(Servo.Direction.FORWARD);
         PwmControl blockerServoPWM = (PwmControl) blockerServo.getServo();
-        blockerServoPWM.setPwmRange(new PwmControl.PwmRange(1550, 1850, 10000));
+        blockerServoPWM.setPwmRange(new PwmControl.PwmRange(1250, 1800, 10000));
         blockerOpenTimer.reset();
         pulseTimer.reset();
     }
@@ -113,15 +116,15 @@ public class Transfer implements Subsystem {
             }
         }
 
-        ActiveOpMode.telemetry().addData("lastDistance", lastDistance);
-        ActiveOpMode.telemetry().addData("transfer power", motor1.getPower());
-        ActiveOpMode.telemetry().addData("is speed good", Shooter.INSTANCE.isSpeedGood());
-        ActiveOpMode.telemetry().addData("intake2 amp", motor1.getMotor().getCurrent(CurrentUnit.MILLIAMPS));
-        ActiveOpMode.telemetry().addData("blocker position", blockerServo.getPosition());
-        ActiveOpMode.telemetry().addData("transfer state", state);
+        telemetryM.addData("lastDistance", lastDistance);
+        telemetryM.addData("transfer power", motor1.getPower());
+        telemetryM.addData("is speed good", Shooter.INSTANCE.isSpeedGood());
+        telemetryM.addData("intake2 amp", motor1.getMotor().getCurrent(CurrentUnit.MILLIAMPS));
+        telemetryM.addData("blocker position", blockerServo.getPosition());
+        telemetryM.addData("transfer state", state);
 
         if (state == State.OFF_OVERRIDE) {
-            blockerServo.setPosition(0);
+            blockerServo.setPosition(0.2);
             motor1.setPower(0);
             wasBlockerClosed = true;
             wasTransferRunning = false;
@@ -153,7 +156,7 @@ public class Transfer implements Subsystem {
             if (blockerOpenTimer.milliseconds() >= blockerDelayMs && Shooter.INSTANCE.isSpeedGood()) {
                 // Apply the pulse restriction here
                 if (shouldPulsePause()) {
-                    motor1.setPower(0);
+                    motor1.setPower(0.2);
                 } else {
                     motor1.setPower(maxOverrideSpeed);
                 }
@@ -170,7 +173,7 @@ public class Transfer implements Subsystem {
                 wasBlockerClosed = false;
             }
 
-            blockerServo.setPosition(0);
+            blockerServo.setPosition(0.4);
 
             if (blockerOpenTimer.milliseconds() >= blockerDelayMs) {
                 // Apply the pulse restriction here
@@ -186,7 +189,7 @@ public class Transfer implements Subsystem {
         }
 
         // --- IDLE STATE ---
-        blockerServo.setPosition(0);
+        blockerServo.setPosition(0.2);
         motor1.setPower(0);
         wasBlockerClosed = true;
     }

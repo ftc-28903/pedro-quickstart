@@ -34,7 +34,7 @@ public class Constants {
             .rightEncoderDirection(Encoder.FORWARD)
             .leftPodY(-7.23)
             .rightPodY(7.23)
-            .strafePodX(0)
+            .strafePodX(-0.11811)
             .forwardTicksToInches(0.00105688)
             .strafeTicksToInches(0.00105688)
             .turnTicksToInches(0.00105688)

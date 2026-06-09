@@ -14,6 +14,7 @@ import org.firstinspires.ftc.teamcode.subsystem.Intake;
 import org.firstinspires.ftc.teamcode.subsystem.Shooter;
 import org.firstinspires.ftc.teamcode.subsystem.Transfer;
 import org.firstinspires.ftc.teamcode.subsystem.Turret;
+import org.firstinspires.ftc.teamcode.utils.AutoStorage;
 
 import dev.nextftc.core.components.BindingsComponent;
 import dev.nextftc.core.components.SubsystemComponent;
@@ -48,6 +49,7 @@ public class PedroTest extends NextFTCOpMode {
         follower.setStartingPose(startingPose == null ? TrajectoryFactory.INSTANCE.startPose : startingPose);
         follower.update();
         Turret.INSTANCE.follower = follower;
+        AutoStorage.follower = follower;
 
         Intake.INSTANCE.spinDown.schedule();
         Shooter.INSTANCE.spinDown.schedule();
@@ -83,6 +85,9 @@ public class PedroTest extends NextFTCOpMode {
                 .whenBecomesTrue(() -> Transfer.INSTANCE.overrideOn.schedule())
                 .whenBecomesFalse(() -> Transfer.INSTANCE.overrideOff.schedule());
 
+        Gamepads.gamepad1().ps()
+                        .whenBecomesTrue(() -> follower.setPose(new Pose(8,8,Math.toRadians(180))));
+
         follower.startTeleOpDrive(true);
     }
 
@@ -104,7 +109,6 @@ public class PedroTest extends NextFTCOpMode {
                 true // Robot Centric
         );
 
-        ActiveOpMode.telemetry().update();
-        telemetryM.update(ActiveOpMode.telemetry());
+        telemetryM.update(telemetry);
     }
 }

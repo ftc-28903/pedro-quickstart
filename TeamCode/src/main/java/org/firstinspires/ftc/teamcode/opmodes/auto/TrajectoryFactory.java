@@ -12,10 +12,12 @@ public class TrajectoryFactory {
     // Define Poses from your original PathChain
     public Pose startPose = new Pose(15.000, 109.000, Math.toRadians(180));
     Pose shootPose1 = new Pose(50.000, 80.000);
-    Pose intakeLine1Pose = new Pose(15.5000, 80.000);
-    Pose intakeLine2Pose = new Pose(2.000, 57.000);
+    Pose intakeLine1Pose = new Pose(15.2000, 80.000);
+    Pose intakeLine2Pose = new Pose(4.000, 60.000);
     Pose shootPose2 = new Pose(61.000, 76.000);
-    Pose gateOpenPose = new Pose(14,61);
+    Pose gateOpenPose = new Pose(14.5,62.5);
+    Pose gateIntakePose1 = new Pose(11.5, 45);
+    Pose gateIntakePose2 = new Pose(12.0, 45);
 
     // PathChains (Normal)
     public PathChain goalStartShoot;
@@ -24,6 +26,8 @@ public class TrajectoryFactory {
     public PathChain shootLine2Intake;
     public PathChain intakeLine2Shoot;
     public PathChain shoot2GateOpen;
+    public PathChain gateIntake2Shoot2;
+    public PathChain gateOpenGateIntake1;
 
     // PathChains (Mirrored)
     public PathChain goalStartShootMirrored;
@@ -83,7 +87,7 @@ public class TrajectoryFactory {
                                 new Pose(20.824, 47.696),
                                 shootPose2
                         )
-                ).setConstantHeadingInterpolation(Math.toRadians(210))
+                ).setConstantHeadingInterpolation(Math.toRadians(180))
                 .build();
 
         shoot2GateOpen = follower.pathBuilder().addPath(
@@ -91,7 +95,25 @@ public class TrajectoryFactory {
                             shootPose2,
                             gateOpenPose
                     )
-                ).setLinearHeadingInterpolation(Math.toRadians(210),Math.toRadians(180))
+                ).setLinearHeadingInterpolation(Math.toRadians(180),Math.toRadians(180))
+                .build();
+
+        gateOpenGateIntake1 = follower.pathBuilder().addPath(
+                    new BezierCurve(
+                            gateOpenPose,
+                            new Pose(20,50),
+                            gateIntakePose1
+                    )
+                ).setLinearHeadingInterpolation(Math.toRadians(180), Math.toRadians(165))
+                .build();
+
+        gateIntake2Shoot2 = follower.pathBuilder().addPath(
+                new BezierCurve(
+                        gateIntakePose1,
+                        new Pose(8,64),
+                        shootPose2
+                )
+        ).setConstantHeadingInterpolation(Math.toRadians(165))
                 .build();
     }
 

@@ -5,6 +5,7 @@ import static org.firstinspires.ftc.teamcode.subsystem.BatteryVars.batteryVoltag
 import com.bylazar.configurables.annotations.Configurable;
 import com.bylazar.telemetry.PanelsTelemetry;
 import com.bylazar.telemetry.TelemetryManager;
+import com.pedropathing.geometry.Pose;
 import com.pedropathing.ivy.commands.Commands;
 import com.qualcomm.robotcore.hardware.PwmControl;
 import com.qualcomm.robotcore.hardware.Servo;
@@ -14,6 +15,9 @@ import dev.nextftc.control.ControlSystem;
 import dev.nextftc.control.KineticState;
 import dev.nextftc.control.feedback.PIDCoefficients;
 import com.pedropathing.ivy.Command;
+
+import org.firstinspires.ftc.teamcode.utils.AutoStorage;
+import org.firstinspires.ftc.teamcode.utils.ShooterRegression;
 
 import dev.nextftc.core.subsystems.Subsystem;
 import dev.nextftc.ftc.ActiveOpMode;
@@ -33,6 +37,9 @@ public class Shooter implements Subsystem {
     public final MotorEx motor1 = new MotorEx("shooter1").reversed();
     private final ServoEx hoodServo1 = new ServoEx("hood1");
 
+    // --- Added ShooterRegression Instance ---
+    private final ShooterRegression regression = new ShooterRegression();
+
     // --- Manual Velocity Tracking Variables ---
     private double lastTicks = 0;
     private long lastTimeNanos = 0;
@@ -45,10 +52,20 @@ public class Shooter implements Subsystem {
     public static PIDCoefficients pidCoefficients = new PIDCoefficients(0.0024, 0, 0.0);
     public static double velocityTolerance = 200;
     public static double voltageCalibration = 13.0;
+    private TelemetryManager telemetryM;
 
     private final ControlSystem controlSystem = ControlSystem.builder()
             .velPid(pidCoefficients)
             .build();
+
+    // Target constants mirrored from your Turret subsystem
+    public static double targetX = 2.0;
+    public static double targetY = 139.5;
+    public static final double TURRET_OFFSET_INCHES = -40.0 / 25.4;
+
+    public static double min_rpm_dynamic = 1070;
+
+    public static boolean angleOverride = true;
 
     public Command spinUp = Commands.instant(() -> {
         state = State.RUNNING;
@@ -69,63 +86,34 @@ public class Shooter implements Subsystem {
     }
 
     public boolean isSpeedGood() {
-        if (state == State.STOPPED) return true;
-        // Use manual velocity calculations
+        if (state == State.STOPPED || mode == Mode.MANUAL) return true;
         double speed = Math.abs(manualVelocityTicksPerSec);
-        double target = Math.abs(controlSystem.getGoal().getVelocity());
 
-        ActiveOpMode.telemetry().addData("SHOOTERSPEED speed", speed);
-        ActiveOpMode.telemetry().addData("SHOOTERTARGET target", target);
-
-        return speed >= 1120;
+        return speed >= min_rpm_dynamic;
     }
 
-    public double calculateHood2(double x) {
-        double a = -1.020e-06;
-        double b = 9.253e-04;
-        double c = -2.979e-01;
-        double d = 8.410e+01;
+    /**
+     * Calculates y for a cubic equation using Horner's Method
+     */
+    public static double hoodPercentageToServo(double x) {
+        final double a = 1.058e-06;
+        final double b = -1.276e-04;
+        final double c = 1.098e-02;
+        final double d = 1.064e-01;
 
-        return ((a * x + b) * x + c) * x + d;
-    }
-
-    public double calculateRPM2(double x) {
-        double m = 5.880e+00;
-        double b = 1.955e+03;
-        return m*x+b;
-    }
-
-    public double calculateHood4(double x) {
-        double a = -5.303e-06;
-        double b = 1.334e-02;
-        double c = -7.790e+00;
-        double y = a*(x*x)+(b*x)+(c);
-        return Math.max(0.5, Math.min(y, 0.68));
-    }
-
-    public double calculateHood(double x) {
-        double a = 1.044e-05;
-        double b = -2.713e-02;
-        double c = 1.807e+01;
-        double y = a*(x*x)+(b*x)+(c);
-        return Math.max(0.45, Math.min(y, 0.63));
-    }
-
-    public double calculateRPM(double x) {
-        double m = 1.244e+00;
-        double b = 1.108e+03;
-        return m*x+b;
+        double clampedX = Math.max(0, Math.min(100, x));
+        return ((a * clampedX + b) * clampedX + c) * clampedX + d;
     }
 
     @Override
     public void initialize() {
+        telemetryM = PanelsTelemetry.INSTANCE.getTelemetry();
         voltageSensor = ActiveOpMode.hardwareMap().get(VoltageSensor.class, "Control Hub");
 
         hoodServo1.getServo().setDirection(Servo.Direction.FORWARD);
         PwmControl hoodServo1PWM = (PwmControl) hoodServo1.getServo();
-        hoodServo1PWM.setPwmRange(new PwmControl.PwmRange(500, 2500, 10000));
+        hoodServo1PWM.setPwmRange(new PwmControl.PwmRange(1100, 1800, 10000));
 
-        // Seed initial values to prevent a massive spike on the first periodic execution loop
         lastTicks = motor1.getCurrentPosition();
         lastTimeNanos = System.nanoTime();
     }
@@ -158,64 +146,86 @@ public class Shooter implements Subsystem {
             manualVelocityTicksPerSec = deltaTicks / deltaTimeSeconds;
         }
 
-        // Cache data for the next periodic cycle
+        manualVelocityTicksPerSec = motor1.getVelocity();
+
         lastTicks = currentTicks;
         lastTimeNanos = currentTimeNanos;
         // ------------------------------------------
 
         batteryVoltage = voltageSensor.getVoltage();
-        ActiveOpMode.telemetry().addData("batteryVoltage", batteryVoltage);
+        telemetryM.addData("batteryVoltage", batteryVoltage);
 
-        if(true) {
-            double distanceHorizontalCm = Webcam.INSTANCE.lastDistanceComponent.horizontal;
-            double distanceVerticalCm = Webcam.INSTANCE.lastDistanceComponent.vertical;
-            ActiveOpMode.telemetry().addData("shooterDistanceX", distanceHorizontalCm);
-            ActiveOpMode.telemetry().addData("shooterDistanceY", distanceVerticalCm);
-            double calculatedRPM = calculateRPM(distanceHorizontalCm);
-            double calculatedTicks = rpmToTicks(calculatedRPM, 28);
+        if (AutoStorage.follower != null) {
+            // Fetch live odometry data from the follower
+            Pose robotPose = AutoStorage.follower.getPose();
 
-            // Replaced motor1.getVelocity() with manual calculation
-            double calculatedHood = calculateHood4(manualVelocityTicksPerSec);
+            // --- 40mm Offset Compensation ---
+            // Determines where the center of the turret/shooter sits in world coordinates
+            double turretX = robotPose.getX() + (TURRET_OFFSET_INCHES * Math.cos(robotPose.getHeading()));
+            double turretY = robotPose.getY() + (TURRET_OFFSET_INCHES * Math.sin(robotPose.getHeading()));
 
-            ActiveOpMode.telemetry().addData("shooterTicksEstimate", calculatedTicks);
-            ActiveOpMode.telemetry().addData("shooterHoodEstimate", calculatedHood);
+            // --- 2D Euclidean Distance Calculation ---
+            double deltaX = targetX - turretX;
+            double deltaY = targetY - turretY;
+            double distanceInches = Math.hypot(deltaX, deltaY);
 
-            shooterAngle = calculatedHood;
+            min_rpm_dynamic = regression.getMinRpmForDistance(distanceInches);
+
+            telemetryM.addData("robotX", robotPose.getX());
+            telemetryM.addData("robotY", robotPose.getY());
+            telemetryM.addData("turretCalculatedX", turretX);
+            telemetryM.addData("turretCalculatedY", turretY);
+            telemetryM.addData("shooterDistanceInches", distanceInches);
+
+            // 1. Calculate Target RPM using ShooterRegression and convert to native controller units
+            double calculatedRPM = regression.getTargetRpm(distanceInches);
+
+            // 2. Adjust hood scaling dynamically using the current actual flywheel RPM via ShooterRegression
+            double calculatedHoodPct = regression.calculateDynamicHood(distanceInches, manualVelocityTicksPerSec);
+            double calculatedServoPos = hoodPercentageToServo(calculatedHoodPct);
+
+            telemetryM.addData("shooterTicksEstimate", calculatedRPM);
+            telemetryM.addData("shooterHoodPctEstimate", calculatedHoodPct);
+            telemetryM.addData("shooterServoEstimate", calculatedServoPos);
+
+            shooterAngle = calculatedServoPos;
             shooterGoal = calculatedRPM;
+
             if (mode == Mode.MANUAL) {
                 shooterGoal = overrideVelo;
-                //shooterAngle = overrideAngle;
+                shooterAngle = angleOverride ? hoodPercentageToServo(overrideAngle) : shooterAngle;
             }
             controlSystem.setGoal(new KineticState(Double.MAX_VALUE, shooterGoal, Double.MAX_VALUE));
         }
+
         hoodServo1.setPosition(shooterAngle);
 
         double rawPower = 1;
-
-        if(Math.abs(shooterGoal) < Math.abs(manualVelocityTicksPerSec)) {
+        if ((Math.abs(manualVelocityTicksPerSec)-Math.abs(shooterGoal))>40) {
+            rawPower = -0.01;
+        }
+        else if (Math.abs(manualVelocityTicksPerSec) >= Math.abs(shooterGoal)) {
             rawPower = calculatePower(shooterGoal);
         }
         double compensatedPower = (rawPower >= 1) ? 1 : rawPower * (voltageCalibration / batteryVoltage);
 
         compensatedPower = Math.max(-1.0, Math.min(1.0, compensatedPower));
-        ActiveOpMode.telemetry().addData("shooterCompensatedPower", compensatedPower);
+        telemetryM.addData("shooterCompensatedPower", compensatedPower);
+
         if (state == State.STOPPED) {
             motor1.setPower(0);
         } else {
             motor1.setPower(compensatedPower);
         }
 
-        // Updated all telemetries to use manual velocity tracking values
-        ActiveOpMode.telemetry().addData("shooter1 ticks/s", manualVelocityTicksPerSec);
-        ActiveOpMode.telemetry().addData("shooter1 rpm", ticksToRPM(manualVelocityTicksPerSec, 28));
-        //ActiveOpMode.telemetry().addData("cs power", rawPower);
-        //ActiveOpMode.telemetry().addData("cs goal", controlSystem.getGoal());
-        ActiveOpMode.telemetry().addData("state", state);
-        ActiveOpMode.telemetry().addData("mode", mode);
+        telemetryM.addData("shooter1 ticks/s", manualVelocityTicksPerSec);
+        telemetryM.addData("shooter1 rpm", ticksToRPM(manualVelocityTicksPerSec, 28));
+        telemetryM.addData("state", state);
+        telemetryM.addData("mode", mode);
 
-        ActiveOpMode.telemetry().addData("shooterTargetVelo", controlSystem.getGoal().getVelocity());
-        ActiveOpMode.telemetry().addData("shooterCurrentVelo", Math.abs(manualVelocityTicksPerSec));
-        ActiveOpMode.telemetry().addData("shooterVeloOffset", Math.abs(shooterGoal) - Math.abs(manualVelocityTicksPerSec));
+        telemetryM.addData("shooterTargetVelo", controlSystem.getGoal().getVelocity());
+        telemetryM.addData("shooterCurrentVelo", Math.abs(manualVelocityTicksPerSec));
+        telemetryM.addData("shooterVeloOffset", Math.abs(shooterGoal) - Math.abs(manualVelocityTicksPerSec));
     }
 
     public static final Shooter INSTANCE = new Shooter();
