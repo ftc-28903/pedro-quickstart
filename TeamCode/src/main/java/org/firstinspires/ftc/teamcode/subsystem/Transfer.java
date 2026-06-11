@@ -22,16 +22,25 @@ import com.pedropathing.ivy.Command;
 @Configurable
 public class Transfer implements Subsystem {
     public static final Transfer INSTANCE = new Transfer();
-    public static double detectDist = 70;
-    public static double maxMotorSpeed = 0.6;
+    public static double detectDist = 80;
+    public static double maxMotorSpeed = 0.5;
+
     // TODO: CHANGE THIS for flywheel
-    public static double maxOverrideSpeed = 1.0;
+    public static double maxOverrideSpeed = 0.9;
     public static double readDelay = 0;
-    public static double blockerDelayMs = 200;
+    public static double blockerDelayMs = 350;
 
     // Pulse timing configurations
     public static double pulseRunTimeMs = 500;
     public static double pulsePauseTimeMs = 0;
+
+    // --- NEW: Ball Anti-Jam/Reverse Tuning Variables ---
+    public static double ballDetectionThresholdMs = 3000; // 3 seconds
+    public static double reverseDurationMs = 400;          // 150ms
+    public static double reverseSpeed = -0.5;             // Speed when backing up
+    public static double maxOverrideReverseSpeed = -1.0;  // <-- NEW: Speed for manual force push backwards
+
+    public static double blocker_block_pos = 0.5;
 
     private Transfer() {}
 
@@ -39,10 +48,17 @@ public class Transfer implements Subsystem {
     public ElapsedTime blockerOpenTimer = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
     public ElapsedTime pulseTimer = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS); // Timer to track the 650ms cycle
 
+    // --- NEW: Timers and flags for the anti-jam logic ---
+    public ElapsedTime ballDetectionTimer = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
+    private boolean isDetectingBall = false;
+    private boolean hasReversedForBall = false;
+
     public enum State {
         AUTO,
         OVERRIDE,
-        OFF_OVERRIDE
+        OFF_OVERRIDE,
+        FORCE_PUSH,
+        FORCE_PUSH_BACK   // <-- NEW STATE: For manual gamepad 2 overriding push backwards
     }
 
     public State state = State.AUTO;
@@ -77,8 +93,25 @@ public class Transfer implements Subsystem {
         }
     });
 
+    // --- NEW COMMANDS FOR GAMEPAD 2 ---
+    public Command forcePush = Commands.instant(() -> state = State.FORCE_PUSH);
+    public Command forcePushStop = Commands.instant(() -> {
+        if (state == State.FORCE_PUSH) {
+            state = State.AUTO;
+        }
+    });
+
+    // --- NEW: FORCE PUSH BACKWARDS COMMANDS ---
+    public Command forcePushBack = Commands.instant(() -> state = State.FORCE_PUSH_BACK);
+    public Command forcePushBackStop = Commands.instant(() -> {
+        if (state == State.FORCE_PUSH_BACK) {
+            state = State.AUTO;
+        }
+    });
+
     @Override
     public void initialize() {
+        blockerServo.getServo().setPosition(1);
         telemetryM = PanelsTelemetry.INSTANCE.getTelemetry();
 
         colorSensorV3 = ActiveOpMode.hardwareMap().get(RevColorSensorV3.class, "color_sensor");
@@ -88,6 +121,8 @@ public class Transfer implements Subsystem {
         blockerServoPWM.setPwmRange(new PwmControl.PwmRange(1250, 1800, 10000));
         blockerOpenTimer.reset();
         pulseTimer.reset();
+        ballDetectionTimer.reset();
+        blockerServo.getServo().setPosition(blocker_block_pos);
     }
 
     /**
@@ -120,14 +155,62 @@ public class Transfer implements Subsystem {
         telemetryM.addData("transfer power", motor1.getPower());
         telemetryM.addData("is speed good", Shooter.INSTANCE.isSpeedGood());
         telemetryM.addData("intake2 amp", motor1.getMotor().getCurrent(CurrentUnit.MILLIAMPS));
-        telemetryM.addData("blocker position", blockerServo.getPosition());
+        telemetryM.addData("blocker position", blockerServo.getServo().getPosition());
         telemetryM.addData("transfer state", state);
 
         if (state == State.OFF_OVERRIDE) {
-            blockerServo.setPosition(0.2);
+            blockerServo.getServo().setPosition(blocker_block_pos);
             motor1.setPower(0);
             wasBlockerClosed = true;
             wasTransferRunning = false;
+            isDetectingBall = false; // Reset ball tracking
+            return;
+        }
+
+        // --- FORCE PUSH LOGIC (Bypasses delays and pulsing for immediate driver control) ---
+        if (state == State.FORCE_PUSH) {
+            blockerServo.getServo().setPosition(blocker_block_pos); // Open blocker fully
+            motor1.setPower(maxOverrideSpeed);      // Push at full speed
+            wasBlockerClosed = false;
+            return;
+        }
+
+        // --- NEW: FORCE PUSH BACKWARDS LOGIC ---
+        if (state == State.FORCE_PUSH_BACK) {
+            blockerServo.getServo().setPosition(blocker_block_pos); // Open blocker fully to let items clear backwards
+            motor1.setPower(maxOverrideReverseSpeed); // Reverse at full speed (-1.0)
+            wasBlockerClosed = false;
+            return;
+        }
+
+        // --- Track how long the ball has been in front of the sensor ---
+        boolean currentBallDetected = (lastDistance > detectDist) && (state == State.AUTO);
+
+        if (currentBallDetected) {
+            if (!isDetectingBall) {
+                ballDetectionTimer.reset();
+                isDetectingBall = true;
+            }
+        } else {
+            isDetectingBall = false;
+            hasReversedForBall = false; // Reset the flag once the ball clears
+        }
+
+        // --- Check if we need to actively execute the reverse pulse ---
+        boolean shiftingBackwards = false;
+        if (isDetectingBall && ballDetectionTimer.milliseconds() >= ballDetectionThresholdMs) {
+            double timeSinceThreshold = ballDetectionTimer.milliseconds() - ballDetectionThresholdMs;
+
+            if (timeSinceThreshold < reverseDurationMs) {
+                shiftingBackwards = true;
+                hasReversedForBall = true;
+            }
+        }
+
+        // If the 150ms reverse window is active, override standard logic immediately
+        if (shiftingBackwards) {
+            blockerServo.getServo().setPosition(blocker_block_pos);
+            motor1.setPower(reverseSpeed);
             return;
         }
 
@@ -151,12 +234,12 @@ public class Transfer implements Subsystem {
                 wasBlockerClosed = false;
             }
 
-            blockerServo.setPosition(1);
+            blockerServo.getServo().setPosition(1);
 
             if (blockerOpenTimer.milliseconds() >= blockerDelayMs && Shooter.INSTANCE.isSpeedGood()) {
                 // Apply the pulse restriction here
                 if (shouldPulsePause()) {
-                    motor1.setPower(0.2);
+                    motor1.setPower(blocker_block_pos);
                 } else {
                     motor1.setPower(maxOverrideSpeed);
                 }
@@ -173,7 +256,7 @@ public class Transfer implements Subsystem {
                 wasBlockerClosed = false;
             }
 
-            blockerServo.setPosition(0.4);
+            blockerServo.getServo().setPosition(blocker_block_pos);
 
             if (blockerOpenTimer.milliseconds() >= blockerDelayMs) {
                 // Apply the pulse restriction here
@@ -189,7 +272,7 @@ public class Transfer implements Subsystem {
         }
 
         // --- IDLE STATE ---
-        blockerServo.setPosition(0.2);
+        blockerServo.getServo().setPosition(blocker_block_pos);
         motor1.setPower(0);
         wasBlockerClosed = true;
     }

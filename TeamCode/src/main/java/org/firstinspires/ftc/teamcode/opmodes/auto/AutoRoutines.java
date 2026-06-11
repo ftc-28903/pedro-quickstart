@@ -1,6 +1,7 @@
 package org.firstinspires.ftc.teamcode.opmodes.auto;
 
 import static com.pedropathing.ivy.groups.Groups.parallel;
+import static com.pedropathing.ivy.groups.Groups.race;
 import static com.pedropathing.ivy.groups.Groups.sequential;
 import static com.pedropathing.ivy.pedro.PedroCommands.follow;
 import static com.pedropathing.ivy.commands.Commands.*;
@@ -11,8 +12,6 @@ import com.pedropathing.ivy.Command;
 import org.firstinspires.ftc.teamcode.subsystem.Intake;
 import org.firstinspires.ftc.teamcode.subsystem.Shooter;
 import org.firstinspires.ftc.teamcode.subsystem.Transfer;
-
-import dev.nextftc.core.commands.delays.WaitUntil;
 
 public class AutoRoutines {
     public static AutoRoutines INSTANCE = new AutoRoutines();
@@ -28,7 +27,7 @@ public class AutoRoutines {
 
     public static Command getShootStopGroup() {
         return parallel(
-                //Intake.INSTANCE.spinDown,
+                Intake.INSTANCE.spinDown,
                 Transfer.INSTANCE.overrideOff
         );
     }
@@ -36,14 +35,26 @@ public class AutoRoutines {
     public static Command getShootCommand() {
         return sequential(
                 getShootStartGroup(),
-                waitMs(800),
+                waitMs(1200),
                 getShootStopGroup()
+        );
+    }
+
+    public Command getTestRoutine(Follower follower) {
+        return sequential(
+                Shooter.INSTANCE.spinDown,
+                follow(follower, TrajectoryFactory.INSTANCE.startShoot2),
+                Intake.INSTANCE.spinUp,
+                follow(follower, TrajectoryFactory.INSTANCE.shoot2GateOpenIntake),
+                waitMs(2000),
+                follow(follower, TrajectoryFactory.INSTANCE.gateOpenIntakeShoot2)
         );
     }
 
     public Command getTwelveattemptgroup(Follower follower) {
         return sequential(
                 // Preload: Curve to shooting position
+                Shooter.INSTANCE.spinUp,
                 follow(follower, TrajectoryFactory.INSTANCE.goalStartShoot),
                 waitUntil(Shooter.INSTANCE::isSpeedGood),
                 waitMs(1000),
@@ -52,7 +63,7 @@ public class AutoRoutines {
                 // new Delay(shootDelay),
 
                 // Intake 1: Line to first intake line
-                //Intake.INSTANCE.spinUp,
+                Intake.INSTANCE.spinUp,
                 follow(follower, TrajectoryFactory.INSTANCE.shootIntakeLine1),
                 //Intake.INSTANCE.spinDown,
 
@@ -61,34 +72,36 @@ public class AutoRoutines {
                 getShootCommand(),
 
                 // Intake 2: Curve down to second intake line
-                //Intake.INSTANCE.spinUp,
-                follow(follower, TrajectoryFactory.INSTANCE.shootLine2Intake),
+                Intake.INSTANCE.spinUp,
+                race(
+                        follow(follower, TrajectoryFactory.INSTANCE.shootLine2Intake),
+                        waitMs(3000)
+                ),
                 //Intake.INSTANCE.spinDown,
 
                 // Shoot 2: Curve back to shooting position
                 follow(follower, TrajectoryFactory.INSTANCE.intakeLine2Shoot),
                 getShootCommand(),
+                Intake.INSTANCE.spinUp,
 
-                follow(follower, TrajectoryFactory.INSTANCE.shoot2GateOpen),
-                waitMs(300),
-
-                follow(follower, TrajectoryFactory.INSTANCE.gateOpenGateIntake1),
-                follow(follower, TrajectoryFactory.INSTANCE.gateIntake2Shoot2),
+                follow(follower, TrajectoryFactory.INSTANCE.shoot2GateOpenIntake),
+                waitMs(2500),
+                follow(follower, TrajectoryFactory.INSTANCE.gateOpenIntakeShoot2),
+                waitMs(800),
                 getShootCommand(),
-
-                follow(follower, TrajectoryFactory.INSTANCE.shoot2GateOpen),
-                waitMs(300),
-
-                follow(follower, TrajectoryFactory.INSTANCE.gateOpenGateIntake1),
-                follow(follower, TrajectoryFactory.INSTANCE.gateIntake2Shoot2),
+                Intake.INSTANCE.spinUp,
+                follow(follower, TrajectoryFactory.INSTANCE.shoot2GateOpenIntake),
+                waitMs(1500),
+                follow(follower, TrajectoryFactory.INSTANCE.gateOpenIntakeShoot2),
+                waitMs(800),
                 getShootCommand(),
-
-                follow(follower, TrajectoryFactory.INSTANCE.shoot2GateOpen),
-                waitMs(300),
-
-                follow(follower, TrajectoryFactory.INSTANCE.gateOpenGateIntake1),
-                follow(follower, TrajectoryFactory.INSTANCE.gateIntake2Shoot2),
-                getShootCommand()
+                Intake.INSTANCE.spinUp,
+                follow(follower, TrajectoryFactory.INSTANCE.shoot2GateOpenIntake),
+                waitMs(1500),
+                follow(follower, TrajectoryFactory.INSTANCE.gateOpenIntakeShoot2),
+                waitMs(500),
+                getShootCommand(),
+                Intake.INSTANCE.spinUp
                 // Transfer.INSTANCE.overrideOn,
                 // new Delay(shootDelay),
         );

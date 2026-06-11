@@ -67,6 +67,9 @@ public class Shooter implements Subsystem {
 
     public static boolean angleOverride = true;
 
+    // --- Added Freeze State Flag ---
+    public static boolean isFrozen = false;
+
     public Command spinUp = Commands.instant(() -> {
         state = State.RUNNING;
     });
@@ -74,6 +77,16 @@ public class Shooter implements Subsystem {
     public Command spinDown = Commands.instant(() -> {
         state = State.STOPPED;
     });
+
+    // --- Added Freeze / Unfreeze Commands ---
+    public Command freeze = Commands.instant(() -> {
+        isFrozen = true;
+    });
+
+    public Command unfreeze = Commands.instant(() -> {
+        isFrozen = false;
+    });
+
     public Command waitForSpeed = Command.build()
             .setDone(this::isSpeedGood);
 
@@ -154,6 +167,7 @@ public class Shooter implements Subsystem {
 
         batteryVoltage = voltageSensor.getVoltage();
         telemetryM.addData("batteryVoltage", batteryVoltage);
+        telemetryM.addData("isFrozen", isFrozen);
 
         if (AutoStorage.follower != null) {
             // Fetch live odometry data from the follower
@@ -177,19 +191,22 @@ public class Shooter implements Subsystem {
             telemetryM.addData("turretCalculatedY", turretY);
             telemetryM.addData("shooterDistanceInches", distanceInches);
 
-            // 1. Calculate Target RPM using ShooterRegression and convert to native controller units
-            double calculatedRPM = regression.getTargetRpm(distanceInches);
+            // Only update targets if values are not currently frozen
+            if (!isFrozen) {
+                // 1. Calculate Target RPM using ShooterRegression and convert to native controller units
+                double calculatedRPM = regression.getTargetRpm(distanceInches);
 
-            // 2. Adjust hood scaling dynamically using the current actual flywheel RPM via ShooterRegression
-            double calculatedHoodPct = regression.calculateDynamicHood(distanceInches, manualVelocityTicksPerSec);
-            double calculatedServoPos = hoodPercentageToServo(calculatedHoodPct);
+                // 2. Adjust hood scaling dynamically using the current actual flywheel RPM via ShooterRegression
+                double calculatedHoodPct = regression.calculateDynamicHood(distanceInches, manualVelocityTicksPerSec);
+                double calculatedServoPos = hoodPercentageToServo(calculatedHoodPct);
 
-            telemetryM.addData("shooterTicksEstimate", calculatedRPM);
-            telemetryM.addData("shooterHoodPctEstimate", calculatedHoodPct);
-            telemetryM.addData("shooterServoEstimate", calculatedServoPos);
+                shooterAngle = calculatedServoPos;
+                shooterGoal = calculatedRPM;
 
-            shooterAngle = calculatedServoPos;
-            shooterGoal = calculatedRPM;
+                telemetryM.addData("shooterTicksEstimate", calculatedRPM);
+                telemetryM.addData("shooterHoodPctEstimate", calculatedHoodPct);
+                telemetryM.addData("shooterServoEstimate", calculatedServoPos);
+            }
 
             if (mode == Mode.MANUAL) {
                 shooterGoal = overrideVelo;
@@ -202,7 +219,7 @@ public class Shooter implements Subsystem {
 
         double rawPower = 1;
         if ((Math.abs(manualVelocityTicksPerSec)-Math.abs(shooterGoal))>40) {
-            rawPower = -0.01;
+            rawPower = -0.15;
         }
         else if (Math.abs(manualVelocityTicksPerSec) >= Math.abs(shooterGoal)) {
             rawPower = calculatePower(shooterGoal);

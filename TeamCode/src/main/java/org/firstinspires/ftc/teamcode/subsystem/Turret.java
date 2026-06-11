@@ -17,13 +17,14 @@ import dev.nextftc.control.KineticState;
 import dev.nextftc.control.feedback.PIDCoefficients;
 import dev.nextftc.core.subsystems.Subsystem;
 import dev.nextftc.ftc.ActiveOpMode;
+import dev.nextftc.hardware.impl.Direction;
 import dev.nextftc.hardware.impl.MotorEx;
 
 @Configurable
 public class Turret implements Subsystem {
     private Turret() { }
 
-    public final MotorEx motor1 = new MotorEx("turret1").reversed();
+    public final MotorEx motor1 = new MotorEx("turret1");
 
     private TelemetryManager telemetryM;
 
@@ -42,9 +43,10 @@ public class Turret implements Subsystem {
         MANUAL
     }
     public static Mode mode = Mode.AUTO;
-    public static double overridePosition = 0;
 
     // --- Offset Feature ---
+    // In AUTO, this modifies the absolute target angle.
+    // In MANUAL, this explicitly dictates the physical target position.
     public static double offsetTicks = 0;
 
     public Command disableTurret = Commands.instant(() -> mode = Mode.MANUAL);
@@ -59,11 +61,12 @@ public class Turret implements Subsystem {
 
     @Override
     public void initialize() {
-        telemetryM = PanelsTelemetry.INSTANCE.getTelemetry();
+        motor1.setDirection(-1);
         motor1.zero();
+        telemetryM = PanelsTelemetry.INSTANCE.getTelemetry();
     }
 
-    public static double TICKS_PER_RADIAN = 114;
+    public static double TICKS_PER_RADIAN = 114.2;
     public static double targetX = 0.0;
     public static double targetY = 142.0;
     public Follower follower;
@@ -79,7 +82,6 @@ public class Turret implements Subsystem {
      */
     public double face(Pose targetPose, Pose robotPose) {
         // --- 40mm Offset Compensation ---
-        // Adjusts robot center to actual turret center of rotation
         double turretX = robotPose.getX() + (TURRET_OFFSET_INCHES * Math.cos(robotPose.getHeading()));
         double turretY = robotPose.getY() + (TURRET_OFFSET_INCHES * Math.sin(robotPose.getHeading()));
 
@@ -87,7 +89,6 @@ public class Turret implements Subsystem {
         double angleToTargetFromTurret = Math.atan2(targetPose.getY() - turretY, targetPose.getX() - turretX);
 
         // 2. Calculate angle relative to the robot's heading.
-        // Adding Math.PI preserves your original physical mapping (e.g., zero faces away from the front).
         double robotAngleDiff = angleToTargetFromTurret - robotPose.getHeading() + Math.PI;
 
         // 3. Normalize to shortest path (-PI to PI)
@@ -102,6 +103,18 @@ public class Turret implements Subsystem {
         if (angle <= -Math.PI) angle += Math.PI * 2D;
         if (angle > Math.PI) angle -= Math.PI * 2D;
         return angle;
+    }
+
+    /**
+     * Increments the offsetTicks based on manual traveler/joystick inputs.
+     * Use this method in your TeleOp to move the turret manually.
+     *
+     * @param amount The relative tick adjustment (e.g., gamepad1.right_stick_x * scale)
+     */
+    public void adjustOffset(double amount) {
+        offsetTicks += amount;
+        // Keep the offset accumulation bounded nicely within physical extremes
+        offsetTicks = MathFunctions.clamp(offsetTicks, MIN_ENCODER_TICKS, MAX_ENCODER_TICKS);
     }
 
     @Override
@@ -121,8 +134,10 @@ public class Turret implements Subsystem {
         // Determine target position in encoder ticks
         double calculatedTargetTicks;
         if (mode == Mode.MANUAL) {
-            calculatedTargetTicks = overridePosition;
+            // Read directly from offsetTicks instead of overridePosition
+            calculatedTargetTicks = offsetTicks;
         } else {
+            // In AUTO, offsetTicks acts as a travel-compensated modifier to the vector track
             calculatedTargetTicks = (steer * TICKS_PER_RADIAN) + offsetTicks;
         }
 
