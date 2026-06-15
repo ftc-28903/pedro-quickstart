@@ -1,6 +1,7 @@
 package org.firstinspires.ftc.teamcode.utils;
 
 import static com.pedropathing.ivy.groups.Groups.parallel;
+import static com.pedropathing.ivy.groups.Groups.sequential;
 
 import com.pedropathing.ivy.Command;
 
@@ -11,7 +12,7 @@ import org.firstinspires.ftc.teamcode.subsystem.Turret;
 
 public class CGHelpers {
     public static Command getInitGroup() {
-        return parallel(
+        return sequential(
                 Intake.INSTANCE.spinDown,
                 Shooter.INSTANCE.spinDown,
                 Transfer.INSTANCE.overrideOff,
@@ -21,7 +22,7 @@ public class CGHelpers {
     }
 
     public static Command getStartGroup() {
-        return parallel(
+        return sequential(
                 Shooter.INSTANCE.spinUp,
                 Turret.INSTANCE.enableTurret,
                 Transfer.INSTANCE.offOverrideOff

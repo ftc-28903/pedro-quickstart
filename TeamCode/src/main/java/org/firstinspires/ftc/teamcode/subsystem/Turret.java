@@ -1,5 +1,6 @@
 package org.firstinspires.ftc.teamcode.subsystem;
 
+import static org.firstinspires.ftc.teamcode.utils.AutoStorage.follower;
 import static org.firstinspires.ftc.teamcode.subsystem.BatteryVars.batteryVoltage;
 
 import com.bylazar.configurables.annotations.Configurable;
@@ -62,6 +63,7 @@ public class Turret implements Subsystem {
     @Override
     public void initialize() {
         motor1.setDirection(-1);
+        // TODO: fix zeroing condition
         motor1.zero();
         telemetryM = PanelsTelemetry.INSTANCE.getTelemetry();
     }
@@ -69,8 +71,6 @@ public class Turret implements Subsystem {
     public static double TICKS_PER_RADIAN = 114.2;
     public static double targetX = 0.0;
     public static double targetY = 142.0;
-    public Follower follower;
-
     public static double kS = 0.08;
 
     // Convert 40mm to inches

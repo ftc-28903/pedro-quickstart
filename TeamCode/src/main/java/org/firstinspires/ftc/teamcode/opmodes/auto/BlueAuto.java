@@ -8,6 +8,7 @@ import org.firstinspires.ftc.teamcode.subsystem.Shooter;
 import org.firstinspires.ftc.teamcode.subsystem.Transfer;
 import org.firstinspires.ftc.teamcode.subsystem.Turret;
 import org.firstinspires.ftc.teamcode.subsystem.Webcam;
+import org.firstinspires.ftc.teamcode.utils.AutoStorage;
 import org.firstinspires.ftc.teamcode.utils.CGHelpers;
 
 import dev.nextftc.core.components.SubsystemComponent;
@@ -46,13 +47,18 @@ public class BlueAuto extends NextFTCOpMode {
         follower.setStartingPose(TrajectoryFactory.INSTANCE.startPose);
 
         schedule(CGHelpers.getInitGroup());
-        Turret.INSTANCE.follower = follower;
     }
 
     @Override
     public void onStartButtonPressed() {
         schedule(CGHelpers.getStartGroup());
         schedule(AutoRoutines.INSTANCE.getTwelveattemptgroup(follower));
+    }
+
+    @Override
+    public void onStop() {
+        AutoStorage.prevOpmodeWasAuto = true;
+        AutoStorage.autoEndPose = follower.getPose();
     }
     
     @Override

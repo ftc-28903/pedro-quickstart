@@ -30,6 +30,7 @@ public class Shooter implements Subsystem {
         RUNNING,
         STOPPED
     }
+    // Set default explicitly to STOPPED to prevent any movement at init
     public State state = State.STOPPED;
     private Shooter() { }
 
@@ -129,6 +130,9 @@ public class Shooter implements Subsystem {
 
         lastTicks = motor1.getCurrentPosition();
         lastTimeNanos = System.nanoTime();
+
+        // Enforce safe default state
+        state = State.STOPPED;
     }
 
     public enum Mode {
@@ -170,11 +174,9 @@ public class Shooter implements Subsystem {
         telemetryM.addData("isFrozen", isFrozen);
 
         if (AutoStorage.follower != null) {
-            // Fetch live odometry data from the follower
             Pose robotPose = AutoStorage.follower.getPose();
 
             // --- 40mm Offset Compensation ---
-            // Determines where the center of the turret/shooter sits in world coordinates
             double turretX = robotPose.getX() + (TURRET_OFFSET_INCHES * Math.cos(robotPose.getHeading()));
             double turretY = robotPose.getY() + (TURRET_OFFSET_INCHES * Math.sin(robotPose.getHeading()));
 
@@ -193,10 +195,7 @@ public class Shooter implements Subsystem {
 
             // Only update targets if values are not currently frozen
             if (!isFrozen) {
-                // 1. Calculate Target RPM using ShooterRegression and convert to native controller units
                 double calculatedRPM = regression.getTargetRpm(distanceInches);
-
-                // 2. Adjust hood scaling dynamically using the current actual flywheel RPM via ShooterRegression
                 double calculatedHoodPct = regression.calculateDynamicHood(distanceInches, manualVelocityTicksPerSec);
                 double calculatedServoPos = hoodPercentageToServo(calculatedHoodPct);
 
@@ -215,10 +214,15 @@ public class Shooter implements Subsystem {
             controlSystem.setGoal(new KineticState(Double.MAX_VALUE, shooterGoal, Double.MAX_VALUE));
         }
 
-        hoodServo1.setPosition(shooterAngle);
+        // --- CRITICAL HARDWARE SAFETY MODIFICATION ---
+        // Only command the servo if the shooter is actively running.
+        // Prevents illegal servo twitching/movement during Init.
+        if (state == State.RUNNING) {
+            hoodServo1.setPosition(shooterAngle);
+        }
 
         double rawPower = 1;
-        if ((Math.abs(manualVelocityTicksPerSec)-Math.abs(shooterGoal))>40) {
+        if ((Math.abs(manualVelocityTicksPerSec) - Math.abs(shooterGoal)) > 40) {
             rawPower = -0.15;
         }
         else if (Math.abs(manualVelocityTicksPerSec) >= Math.abs(shooterGoal)) {

@@ -15,6 +15,7 @@ import org.firstinspires.ftc.teamcode.subsystem.Shooter;
 import org.firstinspires.ftc.teamcode.subsystem.Transfer;
 import org.firstinspires.ftc.teamcode.subsystem.Turret;
 import org.firstinspires.ftc.teamcode.utils.AutoStorage;
+import org.firstinspires.ftc.teamcode.utils.CGHelpers;
 import org.firstinspires.ftc.teamcode.utils.ShooterRegression;
 
 import dev.nextftc.core.components.BindingsComponent;
@@ -54,24 +55,16 @@ public class PedroTest extends NextFTCOpMode {
         telemetryM = PanelsTelemetry.INSTANCE.getTelemetry();
 
         follower = Constants.createFollower(hardwareMap);
-        follower.setStartingPose(startingPose == null ? TrajectoryFactory.INSTANCE.startPose : startingPose);
+        follower.setStartingPose(AutoStorage.autoEndPose == null ? TrajectoryFactory.INSTANCE.startPose : AutoStorage.autoEndPose);
         follower.update();
-        Turret.INSTANCE.follower = follower;
         AutoStorage.follower = follower;
-
-        Intake.INSTANCE.spinDown.schedule();
-        Shooter.INSTANCE.spinDown.schedule();
-        Transfer.INSTANCE.overrideOff.schedule();
-
-        Transfer.INSTANCE.offOverrideOn.schedule();
-
-        Turret.INSTANCE.disableTurret.schedule();
+        CGHelpers.getInitGroup().schedule();
     }
 
     @Override
     public void onStartButtonPressed() {
+        CGHelpers.getStartGroup().schedule();
         Turret.INSTANCE.enableTurret.schedule();
-        Transfer.INSTANCE.offOverrideOff.schedule();
 
         Gamepads.gamepad1().circle().whenBecomesTrue(() -> slowMode = !slowMode);
         Gamepads.gamepad1().dpadUp().whenBecomesTrue(() -> slowModeMultiplier = Math.min(1.0, slowModeMultiplier+0.1));
@@ -108,6 +101,9 @@ public class PedroTest extends NextFTCOpMode {
         Gamepads.gamepad2().leftBumper()
                 .whenBecomesTrue(() -> ShooterRegression.GLOBAL_VELOCITY_OFFSET-=10);
 
+        Gamepads.gamepad2().rightBumper().and(Gamepads.gamepad2().leftBumper())
+                .whenBecomesTrue(() -> ShooterRegression.GLOBAL_VELOCITY_OFFSET = 0);
+
         Gamepads.gamepad2().dpadUp()
                 .whenBecomesTrue(() -> Turret.offsetTicks+=5);
 
@@ -115,8 +111,14 @@ public class PedroTest extends NextFTCOpMode {
                 .whenBecomesTrue(() -> Turret.offsetTicks-=5);
 
         Gamepads.gamepad2().dpadLeft().toggleOnBecomesTrue()
-                .whenBecomesTrue(() -> Turret.INSTANCE.disableTurret.schedule())
-                .whenBecomesFalse(() -> Turret.INSTANCE.enableTurret.schedule());
+                .whenBecomesTrue(() -> {
+                    Turret.offsetTicks = 0;
+                    Turret.INSTANCE.disableTurret.schedule();
+                })
+                .whenBecomesFalse(() -> {
+                    Turret.offsetTicks = 0;
+                    Turret.INSTANCE.enableTurret.schedule();
+                });
 
         Gamepads.gamepad2().rightTrigger().greaterThan(0.8)
                 .whenBecomesTrue(() -> Transfer.INSTANCE.forcePush.schedule())
@@ -177,5 +179,10 @@ public class PedroTest extends NextFTCOpMode {
         }
 
         telemetryM.update(telemetry);
+    }
+
+    @Override
+    public void onStop() {
+        AutoStorage.prevOpmodeWasAuto = false;
     }
 }
