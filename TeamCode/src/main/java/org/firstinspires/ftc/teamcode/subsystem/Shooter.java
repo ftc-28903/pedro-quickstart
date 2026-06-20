@@ -16,6 +16,7 @@ import dev.nextftc.control.KineticState;
 import dev.nextftc.control.feedback.PIDCoefficients;
 import com.pedropathing.ivy.Command;
 
+import org.firstinspires.ftc.teamcode.utils.AllianceColor;
 import org.firstinspires.ftc.teamcode.utils.AutoStorage;
 import org.firstinspires.ftc.teamcode.utils.ShooterRegression;
 
@@ -54,6 +55,7 @@ public class Shooter implements Subsystem {
     public static double velocityTolerance = 200;
     public static double voltageCalibration = 13.0;
     private TelemetryManager telemetryM;
+    public static boolean teleOpOverride = false;
 
     private final ControlSystem controlSystem = ControlSystem.builder()
             .velPid(pidCoefficients)
@@ -131,6 +133,12 @@ public class Shooter implements Subsystem {
         lastTicks = motor1.getCurrentPosition();
         lastTimeNanos = System.nanoTime();
 
+        if (AutoStorage.allianceColor == AllianceColor.RED) {
+            targetX = 144-139.5;
+        } else {
+            targetX = 139.5;
+        }
+
         // Enforce safe default state
         state = State.STOPPED;
     }
@@ -184,6 +192,9 @@ public class Shooter implements Subsystem {
             double deltaX = targetX - turretX;
             double deltaY = targetY - turretY;
             double distanceInches = Math.hypot(deltaX, deltaY);
+            if (teleOpOverride) {
+                distanceInches = 98.0;
+            }
 
             min_rpm_dynamic = regression.getMinRpmForDistance(distanceInches);
 

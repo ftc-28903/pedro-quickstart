@@ -9,6 +9,7 @@ import org.firstinspires.ftc.teamcode.subsystem.Transfer;
 import org.firstinspires.ftc.teamcode.subsystem.Turret;
 import org.firstinspires.ftc.teamcode.subsystem.Webcam;
 import org.firstinspires.ftc.teamcode.utils.AllianceColor;
+import org.firstinspires.ftc.teamcode.utils.AutoMode;
 import org.firstinspires.ftc.teamcode.utils.AutoStorage;
 import org.firstinspires.ftc.teamcode.utils.CGHelpers;
 
@@ -26,9 +27,9 @@ import com.pedropathing.geometry.Pose;
 import com.pedropathing.ivy.Scheduler;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 
-@Autonomous(name = "BlueAuto")
-public class BlueAuto extends NextFTCOpMode {
-    public BlueAuto() {
+@Autonomous(name = "PedroFarAuto")
+public class PedroFarAuto extends NextFTCOpMode {
+    public PedroFarAuto() {
         addComponents(
                 new SubsystemComponent(Intake.INSTANCE, Shooter.INSTANCE, Transfer.INSTANCE, Turret.INSTANCE, Webcam.INSTANCE),
                 BulkReadComponent.INSTANCE
@@ -40,16 +41,17 @@ public class BlueAuto extends NextFTCOpMode {
 
     @Override
     public void onInit() {
+        AutoStorage.autoMode = AutoMode.FAR;
         telemetryM = PanelsTelemetry.INSTANCE.getTelemetry();
 
         Scheduler.reset();
         follower = Constants.createFollower(hardwareMap);
         if (AutoStorage.allianceColor == AllianceColor.BLUE) {
             TrajectoryFactory.INSTANCE.buildTrajectories(follower);
-            follower.setStartingPose(TrajectoryFactory.INSTANCE.startPose);
+            follower.setStartingPose(TrajectoryFactory.INSTANCE.farStartPose);
         } else {
             TrajectoryFactory.INSTANCE.buildMirroredTrajectories(follower);
-            follower.setStartingPose(TrajectoryFactory.INSTANCE.startPose.mirror());
+            follower.setStartingPose(TrajectoryFactory.INSTANCE.farStartPose.mirror());
         }
         schedule(CGHelpers.getInitGroup());
 
@@ -61,7 +63,7 @@ public class BlueAuto extends NextFTCOpMode {
         AutoStorage.opModeStarted = true;
         AutoStorage.follower = follower;
         schedule(CGHelpers.getStartGroup());
-        schedule(AutoRoutines.INSTANCE.getTwelveattemptgroup(follower));
+        schedule(AutoRoutines.INSTANCE.getFarGroup(follower));
     }
 
     @Override
@@ -69,7 +71,7 @@ public class BlueAuto extends NextFTCOpMode {
         AutoStorage.prevOpmodeWasAuto = true;
         AutoStorage.autoEndPose = follower.getPose();
     }
-    
+
     @Override
     public void onUpdate() {
         follower.update();

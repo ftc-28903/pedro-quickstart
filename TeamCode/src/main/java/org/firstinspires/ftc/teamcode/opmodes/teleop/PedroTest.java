@@ -14,6 +14,8 @@ import org.firstinspires.ftc.teamcode.subsystem.Intake;
 import org.firstinspires.ftc.teamcode.subsystem.Shooter;
 import org.firstinspires.ftc.teamcode.subsystem.Transfer;
 import org.firstinspires.ftc.teamcode.subsystem.Turret;
+import org.firstinspires.ftc.teamcode.subsystem.Webcam;
+import org.firstinspires.ftc.teamcode.utils.AllianceColor;
 import org.firstinspires.ftc.teamcode.utils.AutoStorage;
 import org.firstinspires.ftc.teamcode.utils.CGHelpers;
 import org.firstinspires.ftc.teamcode.utils.ShooterRegression;
@@ -32,7 +34,7 @@ public class PedroTest extends NextFTCOpMode {
         addComponents(
                 BulkReadComponent.INSTANCE,
                 BindingsComponent.INSTANCE,
-                new SubsystemComponent(Shooter.INSTANCE, Intake.INSTANCE, Transfer.INSTANCE, Turret.INSTANCE)
+                new SubsystemComponent(Shooter.INSTANCE, Intake.INSTANCE, Transfer.INSTANCE, Turret.INSTANCE, Webcam.INSTANCE)
         );
     }
 
@@ -55,14 +57,25 @@ public class PedroTest extends NextFTCOpMode {
         telemetryM = PanelsTelemetry.INSTANCE.getTelemetry();
 
         follower = Constants.createFollower(hardwareMap);
-        follower.setStartingPose(AutoStorage.autoEndPose == null ? TrajectoryFactory.INSTANCE.startPose : AutoStorage.autoEndPose);
+        if (AutoStorage.allianceColor == AllianceColor.RED) {
+            follower.setStartingPose(AutoStorage.autoEndPose == null ? TrajectoryFactory.INSTANCE.startPose.mirror() : AutoStorage.autoEndPose);
+        } else {
+            follower.setStartingPose(AutoStorage.autoEndPose == null ? TrajectoryFactory.INSTANCE.startPose : AutoStorage.autoEndPose);
+        }
         follower.update();
         AutoStorage.follower = follower;
         CGHelpers.getInitGroup().schedule();
+
+        Webcam.INSTANCE.init();
+
+        AutoStorage.opModeStarted = false;
     }
 
     @Override
     public void onStartButtonPressed() {
+        AutoStorage.isFirstRun = false;
+        AutoStorage.opModeStarted = true;
+
         CGHelpers.getStartGroup().schedule();
         Turret.INSTANCE.enableTurret.schedule();
 
@@ -83,13 +96,28 @@ public class PedroTest extends NextFTCOpMode {
                 .whenBecomesFalse(() -> Transfer.INSTANCE.overrideOff.schedule());
 
         Gamepads.gamepad2().ps()
-                .whenBecomesTrue(() -> follower.setPose(new Pose(8.5,8.5,Math.toRadians(180))));
+                .whenBecomesTrue(() -> {
+                    follower.setPose(AutoStorage.allianceColor == AllianceColor.BLUE ?
+                            new Pose(8.5, 8.5, Math.toRadians(180)) :
+                            new Pose(8.5, 8.5, Math.toRadians(180)).mirror());
+                    follower.update(); // Prevent immediate localization twitching
+                });
 
         Gamepads.gamepad2().circle()
-                .whenBecomesTrue(() -> follower.setPose(new Pose(15.5, 112.4, Math.toRadians(180))));
+                .whenBecomesTrue(() -> {
+                    follower.setPose(AutoStorage.allianceColor == AllianceColor.BLUE ?
+                            new Pose(15.5, 112.4, Math.toRadians(180)) :
+                            new Pose(15.5, 112.4, Math.toRadians(180)).mirror());
+                    follower.update();
+                });
 
         Gamepads.gamepad2().triangle()
-                .whenBecomesTrue(() -> follower.setPose(new Pose(36.8, 133.0, Math.toRadians(90))));
+                .whenBecomesTrue(() -> {
+                    follower.setPose(AutoStorage.allianceColor == AllianceColor.BLUE ?
+                            new Pose(36.8, 133.0, Math.toRadians(90)) :
+                            new Pose(36.8, 133.0, Math.toRadians(90)).mirror());
+                    follower.update();
+                });
 
         Gamepads.gamepad2().share().toggleOnBecomesTrue()
                 .whenBecomesTrue(() -> Transfer.INSTANCE.offOverrideOn.schedule())
@@ -104,20 +132,32 @@ public class PedroTest extends NextFTCOpMode {
         Gamepads.gamepad2().rightBumper().and(Gamepads.gamepad2().leftBumper())
                 .whenBecomesTrue(() -> ShooterRegression.GLOBAL_VELOCITY_OFFSET = 0);
 
-        Gamepads.gamepad2().dpadUp()
-                .whenBecomesTrue(() -> Turret.offsetTicks+=5);
+        Gamepads.gamepad2().dpadLeft()
+                .whenBecomesTrue(() -> {
+                    double increment = Shooter.teleOpOverride ? 20 : 5;
+                    // On Blue, Left is +. On Red, the field is mirrored, so Left becomes -
+                    double allianceModifier = (AutoStorage.allianceColor == AllianceColor.BLUE ? 1 : -1);
+                    Turret.INSTANCE.adjustOffset(increment * allianceModifier);
+                });
 
-        Gamepads.gamepad2().dpadDown()
-                .whenBecomesTrue(() -> Turret.offsetTicks-=5);
+        Gamepads.gamepad2().dpadRight()
+                .whenBecomesTrue(() -> {
+                    double increment = Shooter.teleOpOverride ? 20 : 5;
+                    // On Blue, Right is -. On Red, the field is mirrored, so Right becomes +
+                    double allianceModifier = (AutoStorage.allianceColor == AllianceColor.BLUE ? -1 : 1);
+                    Turret.INSTANCE.adjustOffset(increment * allianceModifier);
+                });
 
-        Gamepads.gamepad2().dpadLeft().toggleOnBecomesTrue()
+        Gamepads.gamepad2().dpadUp().toggleOnBecomesTrue()
                 .whenBecomesTrue(() -> {
                     Turret.offsetTicks = 0;
                     Turret.INSTANCE.disableTurret.schedule();
+                    Shooter.teleOpOverride = true;
                 })
                 .whenBecomesFalse(() -> {
                     Turret.offsetTicks = 0;
                     Turret.INSTANCE.enableTurret.schedule();
+                    Shooter.teleOpOverride = false;
                 });
 
         Gamepads.gamepad2().rightTrigger().greaterThan(0.8)
@@ -143,35 +183,17 @@ public class PedroTest extends NextFTCOpMode {
         double deltaTime = (currentTime - lastUpdateTime) / 1e9;
         lastUpdateTime = currentTime;
 
-        // Fetch raw forward target input (positive = forward, negative = backward)
-        double targetLeftStickY = -gamepad1.left_stick_y;
-
-        double maxChange = MAX_RATE_OF_CHANGE * deltaTime;
-        double change = targetLeftStickY - limitedLeftStickY;
-
-        // --- Targeted Edge Case Check ---
-        // True ONLY if the robot's commanded state is currently backward/stopped,
-        // and the driver is actively pushing the stick forward.
-        boolean transitioningBackwardToForward = (limitedLeftStickY <= 0 && targetLeftStickY > 0);
-
-        if (transitioningBackwardToForward && change > maxChange) {
-            limitedLeftStickY += maxChange;
-        } else {
-            // Unfiltered response for normal forward acceleration, braking, and reversing
-            limitedLeftStickY = targetLeftStickY;
-        }
-
         // Apply translation inputs to Pedro Pathing follower
         if (!slowMode) {
             follower.setTeleOpDrive(
-                    limitedLeftStickY,
+                    -gamepad1.left_stick_y,
                     -gamepad1.left_stick_x,
                     -gamepad1.right_stick_x,
                     true // Robot Centric
             );
         } else {
             follower.setTeleOpDrive(
-                    limitedLeftStickY * slowModeMultiplier,
+                    -gamepad1.left_stick_y * slowModeMultiplier,
                     -gamepad1.left_stick_x * slowModeMultiplier,
                     -gamepad1.right_stick_x * slowModeMultiplier,
                     true // Robot Centric

@@ -13,6 +13,9 @@ import com.pedropathing.ivy.Command;
 import com.pedropathing.ivy.commands.Commands;
 import com.pedropathing.math.MathFunctions;
 
+import org.firstinspires.ftc.teamcode.utils.AllianceColor;
+import org.firstinspires.ftc.teamcode.utils.AutoStorage;
+
 import dev.nextftc.control.ControlSystem;
 import dev.nextftc.control.KineticState;
 import dev.nextftc.control.feedback.PIDCoefficients;
@@ -25,7 +28,7 @@ import dev.nextftc.hardware.impl.MotorEx;
 public class Turret implements Subsystem {
     private Turret() { }
 
-    public final MotorEx motor1 = new MotorEx("turret1");
+    public final MotorEx motor1 = new MotorEx("turret1").reversed();
 
     private TelemetryManager telemetryM;
 
@@ -57,14 +60,15 @@ public class Turret implements Subsystem {
     public Command waitForTurret = Commands.instant(() -> {});
 
     public boolean isTurretInRange() {
-        return Math.abs(Webcam.INSTANCE.lastOffset) < 5;
+        return true;
     }
 
     @Override
     public void initialize() {
-        motor1.setDirection(-1);
         // TODO: fix zeroing condition
-        motor1.zero();
+        if (!AutoStorage.prevOpmodeWasAuto && AutoStorage.isFirstRun) {
+            motor1.zero();
+        }
         telemetryM = PanelsTelemetry.INSTANCE.getTelemetry();
     }
 
@@ -119,10 +123,14 @@ public class Turret implements Subsystem {
 
     @Override
     public void periodic() {
-        if (follower == null) return;
+        if (AutoStorage.follower == null) return;
+        if (!AutoStorage.opModeStarted) return;
 
         Pose robotPose = follower.getPose();
         Pose targetPose = new Pose(targetX, targetY, 0);
+        if (AutoStorage.allianceColor == AllianceColor.RED) {
+            targetPose = targetPose.mirror();
+        }
 
         telemetryM.addData("robot x", robotPose.getX());
         telemetryM.addData("robot y", robotPose.getY());

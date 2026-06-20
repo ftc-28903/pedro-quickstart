@@ -32,6 +32,14 @@ public class AutoRoutines {
         );
     }
 
+    public static Command getFarShootCommand() {
+        return sequential(
+                getShootStartGroup(),
+                waitMs(3500),
+                getShootStopGroup()
+        );
+    }
+
     public static Command getShootCommand() {
         return sequential(
                 getShootStartGroup(),
@@ -51,8 +59,28 @@ public class AutoRoutines {
         );
     }
 
+    public Command getFarGroup(Follower follower) {
+        return sequential(
+                waitMs(500),
+                Shooter.INSTANCE.waitForSpeed,
+                waitMs(1000),
+                getFarShootCommand(),
+                follow(follower, TrajectoryFactory.INSTANCE.startFarIntakeLine3),
+                follow(follower, TrajectoryFactory.INSTANCE.intakeLine3FarShoot),
+                getFarShootCommand(),
+                follow(follower, TrajectoryFactory.INSTANCE.farShootIntakeLine3),
+                follow(follower, TrajectoryFactory.INSTANCE.intakeLine3FarShoot),
+                getFarShootCommand(),
+                follow(follower, TrajectoryFactory.INSTANCE.farShootIntakeLine3),
+                follow(follower, TrajectoryFactory.INSTANCE.intakeLine3FarShoot),
+                getFarShootCommand(),
+                follow(follower, TrajectoryFactory.INSTANCE.farShootFarPark)
+        );
+    }
+
     public Command getTwelveattemptgroup(Follower follower) {
         return sequential(
+                waitMs(500),
                 // Preload: Curve to shooting position
                 Shooter.INSTANCE.spinUp,
                 follow(follower, TrajectoryFactory.INSTANCE.goalStartShoot),

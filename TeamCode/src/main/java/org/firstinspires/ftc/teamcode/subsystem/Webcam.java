@@ -14,7 +14,6 @@ import org.firstinspires.ftc.robotcore.external.hardware.camera.controls.Exposur
 import org.firstinspires.ftc.robotcore.external.hardware.camera.controls.GainControl;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
-import org.firstinspires.ftc.teamcode.utils.AllianceColor;
 import org.firstinspires.ftc.teamcode.utils.AutoStorage;
 import org.firstinspires.ftc.vision.VisionPortal;
 import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
@@ -35,116 +34,99 @@ public class Webcam implements Subsystem {
     private AprilTagProcessor aprilTagProcessor;
     private VisionPortal visionPortal;
     private List<AprilTagDetection> detectedTags = new ArrayList<>();
-    // goal auto approx, far should see it (almost) immediately
-    public DistanceComponents lastDistanceComponent = new DistanceComponents(120,45);
-    private final IMUEx imu = new IMUEx("imu", Direction.UP, Direction.FORWARD);
 
-    private static final double CAMERA_TILT_DEGREES = 15.0; // Camera tilted upwards
+    private final IMUEx imu = new IMUEx("imu", Direction.UP, Direction.FORWARD);
     public static float decimation = 2.0f;
     private TelemetryManager telemetryM;
-    //public double imuTarget = 0;
-    public double lastOffset = 0;
-    //public double imuOffset = 0;
 
     public ElapsedTime detectionTimer = new ElapsedTime();
-
-    // abs heading
     private double continuousHeading = 0;
     private double lastImuAngle = 0;
     private boolean firstHeadingUpdate = true;
 
-    /**
-     * Calculates the horizontal distance to an AprilTag, excluding height difference.
-     * Takes into account the camera's upward tilt.
-     *
-     * @param detection The AprilTag detection
-     * @return Horizontal distance in cm, or -1 if detection is null
-     */
-    public double getHorizontalDistance(AprilTagDetection detection) {
-        if (detection == null) return -1;
+    // Camera mounting pitch configuration (30 degrees tilted upwards)
+    private static final double CAMERA_PITCH_RAD = Math.toRadians(30.0);
 
-        // Get the range (direct distance) and elevation angle from the detection
-        double range = detection.ftcPose.range; // in cm
-        double elevationAngle = detection.ftcPose.elevation; // in degrees
+    // --- WEBCAM OFFSETS (Inches) ---
+    // Physical distance from the ROBOT CENTER to the CAMERA LENS measured in the Robot Frame.
+    // Pedro Pathing Frame Convention: +X is Forward, +Y is Left
+    private static final double CAMERA_OFFSET_X = 4.7;  // Forward/Backward placement shift
+    private static final double CAMERA_OFFSET_Y = 6.3;  // Side-to-side placement shift
 
-        // Adjust elevation angle for camera tilt
-        double actualElevationAngle = elevationAngle + CAMERA_TILT_DEGREES;
+    // Estimated Robot Pose via AprilTag (Stored in Native Inches to match Pedro Pathing)
+    private RobotPose estimatedPose = new RobotPose(0, 0, 0);
 
-        // Calculate horizontal distance using cosine
-        // horizontalDistance = range * cos(actualElevation)
-        double horizontalDistance = range * Math.cos(Math.toRadians(actualElevationAngle));
-
-        return horizontalDistance;
-    }
-
-    /**
-     * Alternative method: Gets the horizontal distance and height difference separately
-     */
-    public DistanceComponents getDistanceComponents(AprilTagDetection detection) {
-        if (detection == null) return null;
-
-        double range = detection.ftcPose.range;
-        double elevationAngle = detection.ftcPose.elevation;
-        double actualElevationAngle = elevationAngle + CAMERA_TILT_DEGREES;
-
-        double horizontalDistance = range * Math.cos(Math.toRadians(actualElevationAngle));
-        double heightDifference = range * Math.sin(Math.toRadians(actualElevationAngle));
-
-        return new DistanceComponents(horizontalDistance-30, heightDifference);
-    }
-
-    // Helper class to return both components
-    public static class DistanceComponents {
-        public final double horizontal; // cm
-        public final double vertical;   // cm
-
-        public DistanceComponents(double horizontal, double vertical) {
-            this.horizontal = horizontal;
-            this.vertical = vertical;
+    public static class RobotPose {
+        public double x, y, heading;
+        public RobotPose(double x, double y, double heading) {
+            this.x = x;
+            this.y = y;
+            this.heading = heading;
         }
     }
 
-    public double getTurnToBackOfTag(AprilTagDetection detection) {
-        if (detection == null) return 0;
+    /**
+     * Estimates the absolute robot position using Pedro Pathing map coordinates.
+     * Accounts for a 90-degree camera yaw rotation, a 30-degree upward camera tilt, and mounting offsets.
+     */
+    public RobotPose estimateRobotPose(AprilTagDetection detection) {
+        if (detection == null || detection.metadata == null) return null;
 
-        DistanceComponents d = getDistanceComponents(detection);
-        double forward = d.horizontal;
+        // 1. Get known static global field coordinates for this tag ID (in inches)
+        double tagFieldX = getTagFieldX(detection.id);
+        double tagFieldY = getTagFieldY(detection.id);
 
-        double bearingRad = Math.toRadians(detection.ftcPose.bearing);
-        double side = forward * Math.tan(bearingRad);
+        // 2. Fetch raw camera relative translation metrics (convert cm to inches)
+        double rawCamX = detection.ftcPose.x / 2.54; // Camera side-to-side
+        double rawCamY = detection.ftcPose.y / 2.54; // Camera straight forward out lens
+        double rawCamZ = detection.ftcPose.z / 2.54; // Camera height/vertical
 
-        double x_tag = side;
-        double y_tag = forward;
+        // 3. STEP A: Counter-rotate the 30° upward camera tilt pitch around the local camera X axis
+        // This flattens out raw forward (Y) and vertical (Z) distances to the ground plane
+        double flatCamX = rawCamX;
+        double flatCamY = rawCamY * Math.cos(CAMERA_PITCH_RAD) - rawCamZ * Math.sin(CAMERA_PITCH_RAD);
 
-        double tagYawRad = Math.toRadians(detection.ftcPose.yaw);
+        // 3. STEP B: Account for the 90-degree physical mounting rotation of the camera body
+        // Assuming camera faces RIGHT relative to the chassis frame:
+        // Robot Frame X (Forward) = -flatCamY (moving deeper into camera view means robot is moving left/right)
+        // Robot Frame Y (Left)    = -flatCamX
+        // NOTE: Invert these signs if your tracking values shift backward or if camera faces LEFT!
+        double robotRelativeX = -flatCamY;
+        double robotRelativeY = -flatCamX;
 
-        double backX = 0 * Math.sin(tagYawRad);
-        double backY = 0 * Math.cos(tagYawRad);
+        // 4. Transform local camera-to-target vectors into global Pedro Pathing coordinate alignment
+        double globalHeadingRad = Math.toRadians(continuousHeading);
 
-        double targetX = x_tag + backX;
-        double targetY = y_tag + backY;
+        // Calculate global position of the CAMERA lens
+        double cameraFieldX = tagFieldX - (robotRelativeX * Math.cos(globalHeadingRad) - robotRelativeY * Math.sin(globalHeadingRad));
+        double cameraFieldY = tagFieldY - (robotRelativeX * Math.sin(globalHeadingRad) + robotRelativeY * Math.cos(globalHeadingRad));
 
-        return Math.toDegrees(Math.atan2(targetX, targetY));
+        // 5. Translate from the camera lens back to the robot center using the robot-frame camera offsets
+        double fieldX = cameraFieldX - (CAMERA_OFFSET_X * Math.cos(globalHeadingRad) - CAMERA_OFFSET_Y * Math.sin(globalHeadingRad));
+        double fieldY = cameraFieldY - (CAMERA_OFFSET_X * Math.sin(globalHeadingRad) + CAMERA_OFFSET_Y * Math.cos(globalHeadingRad));
+
+        return new RobotPose(fieldX, fieldY, continuousHeading);
     }
 
-    public void updateContinuousHeading() {
-        double current = imu.get().inDeg;
-
-        if (firstHeadingUpdate) {
-            lastImuAngle = current;
-            continuousHeading = current;
-            firstHeadingUpdate = false;
-            return;
+    /**
+     * Absolute tag X positions on the field map (Inches)
+     */
+    private double getTagFieldX(int id) {
+        switch (id) {
+            case 24:
+                return 72.0 + 55.6; // 127.6 inches (Left side)
+            case 20: // blue
+                return 72.0 - 55.6; // 16.4 inches (Right side)
+            default:
+                return 0.0;
         }
+    }
 
-        double delta = current - lastImuAngle;
-
-        // Detect wrap crossing
-        if (delta > 180) delta -= 360;
-        if (delta < -180) delta += 360;
-
-        continuousHeading += delta;
-        lastImuAngle = current;
+    /**
+     * Absolute tag Y positions on the field map (Inches)
+     */
+    private double getTagFieldY(int id) {
+        return 72.0 + 58.3;
     }
 
     public void init() {
@@ -159,7 +141,7 @@ public class Webcam implements Subsystem {
                 .setTagFamily(AprilTagProcessor.TagFamily.TAG_36h11)
                 .build();
 
-        aprilTagProcessor.setDecimation(2.0f);
+        aprilTagProcessor.setDecimation(decimation);
 
         VisionPortal.Builder builder = new VisionPortal.Builder();
         builder.setCamera(ActiveOpMode.hardwareMap().get(WebcamName.class, "Webcam 1"));
@@ -168,59 +150,51 @@ public class Webcam implements Subsystem {
 
         visionPortal = builder.build();
 
-        setManualExposure(2, 100);
+        setManualExposure(0, 100);
     }
 
     @Override
     public void periodic() {
-        updateContinuousHeading();
-        aprilTagProcessor.setDecimation(decimation);
+        if (!AutoStorage.opModeStarted || AutoStorage.follower == null || aprilTagProcessor == null) return;
+        continuousHeading = Math.toDegrees(AutoStorage.follower.getHeading());
         detectedTags = aprilTagProcessor.getDetections();
 
-        AprilTagDetection allianceTag = null;
-        if (AutoStorage.allianceColor == AllianceColor.BLUE) {
-            allianceTag = getTagBySpecificId(22);
-        } else if (AutoStorage.allianceColor == AllianceColor.RED) {
-            allianceTag = getTagBySpecificId(23);
+        double sumX = 0;
+        double sumY = 0;
+        int validDetectionsCount = 0;
+
+        // Iterate through all active detections, filtering explicitly for IDs 20 & 24
+        for (AprilTagDetection detection : detectedTags) {
+            if (detection != null && detection.metadata != null && (detection.id == 20 || detection.id == 24)) {
+                RobotPose calculation = estimateRobotPose(detection);
+                if (calculation != null) {
+                    sumX += calculation.x;
+                    sumY += calculation.y;
+                    validDetectionsCount++;
+                }
+            }
         }
 
-        if(allianceTag != null && allianceTag.metadata != null) {
-            lastDistanceComponent = getDistanceComponents(allianceTag);
-            lastOffset = getTurnToBackOfTag(allianceTag);
+        // If one or both targets are tracked, update the shared tracking estimation
+        if (validDetectionsCount > 0) {
+            estimatedPose = new RobotPose(sumX / validDetectionsCount, sumY / validDetectionsCount, continuousHeading);
             detectionTimer.reset();
-            //imuTarget = continuousHeading - lastOffset;
         }
 
-        displayDetectionTelemetry(allianceTag);
-        
-        StringBuilder sb = new StringBuilder("detected tags: ");
-        for (AprilTagDetection detection : getDetectedTags()) {
-            sb.append(detection.id);
+        // Provide telemetry output stream layout tracking metrics
+        StringBuilder sb = new StringBuilder("tracked tags: ");
+        for (AprilTagDetection d : detectedTags) {
+            if (d.id == 20 || d.id == 24) sb.append(d.id).append(" ");
         }
         ActiveOpMode.telemetry().addLine(sb.toString());
-        telemetryM.addData("goalLastOffset", lastOffset);
-        //telemetryM.addData("goalIMUTarget", imuTarget);
-        //imuOffset = continuousHeading - imuTarget;
-        //telemetryM.addData("goalIMUOffset", imuOffset);
+
+        telemetryM.addData("WEBCAMMMMM Robot Global X (in)", estimatedPose.x);
+        telemetryM.addData("Robot Global Y (in)", estimatedPose.y);
+        telemetryM.addData("Robot Global Heading", estimatedPose.heading);
     }
 
     public List<AprilTagDetection> getDetectedTags() {
         return detectedTags;
-    }
-
-    public void displayDetectionTelemetry(AprilTagDetection detectedId) {
-        if (detectedId == null) return;
-
-        if (detectedId.metadata != null) {
-            ActiveOpMode.telemetry().addLine(String.format(Locale.ENGLISH, "\n==== (ID %d) %s", detectedId.id, detectedId.metadata.name));
-            ActiveOpMode.telemetry().addLine(String.format(Locale.ENGLISH, "XYZ %6.1f %6.1f %6.1f (cm)", detectedId.ftcPose.x, detectedId.ftcPose.y, detectedId.ftcPose.z));
-            ActiveOpMode.telemetry().addLine(String.format(Locale.ENGLISH, "PRY %6.1f %6.1f %6.1f (deg)", detectedId.ftcPose.pitch, detectedId.ftcPose.roll, detectedId.ftcPose.yaw));
-            ActiveOpMode.telemetry().addLine(String.format(Locale.ENGLISH, "RBE %6.1f %6.1f %6.1f (cm, deg, deg)", detectedId.ftcPose.range, detectedId.ftcPose.bearing, detectedId.ftcPose.elevation));
-            ActiveOpMode.telemetry().addLine(String.format(Locale.ENGLISH, "Horizontal: %6.1f, vertical: %6.1f", lastDistanceComponent.horizontal, lastDistanceComponent.vertical));
-        } else {
-            ActiveOpMode.telemetry().addLine(String.format(Locale.ENGLISH, "\n==== (ID %d) Unknown", detectedId.id));
-            ActiveOpMode.telemetry().addLine(String.format(Locale.ENGLISH, "Center %6.0f %6.0f (pixels)", detectedId.center.x, detectedId.center.y));
-        }
     }
 
     public final void sleep(long milliseconds) {
@@ -232,12 +206,10 @@ public class Webcam implements Subsystem {
     }
 
     private boolean setManualExposure(int exposureMS, int gain) {
-        // Ensure Vision Portal has been setup.
         if (visionPortal == null) {
             return false;
         }
 
-        // Wait for the camera to be open
         if (visionPortal.getCameraState() != VisionPortal.CameraState.STREAMING) {
             ActiveOpMode.telemetry().addData("Camera", "Waiting");
             ActiveOpMode.telemetry().update();
@@ -248,10 +220,7 @@ public class Webcam implements Subsystem {
             ActiveOpMode.telemetry().update();
         }
 
-        // Set camera controls unless we are stopping.
-        if (!isStopRequested())
-        {
-            // Set exposure.  Make sure we are in Manual Mode for these values to take effect.
+        if (!isStopRequested()) {
             ExposureControl exposureControl = visionPortal.getCameraControl(ExposureControl.class);
             if (exposureControl.getMode() != ExposureControl.Mode.Manual) {
                 exposureControl.setMode(ExposureControl.Mode.Manual);
@@ -260,7 +229,6 @@ public class Webcam implements Subsystem {
             exposureControl.setExposure(exposureMS, TimeUnit.MILLISECONDS);
             sleep(20);
 
-            // Set Gain.
             GainControl gainControl = visionPortal.getCameraControl(GainControl.class);
             gainControl.setGain(gain);
             sleep(20);
@@ -270,13 +238,8 @@ public class Webcam implements Subsystem {
         }
     }
 
-    public AprilTagDetection getTagBySpecificId(int id) {
-        for (AprilTagDetection detection : detectedTags) {
-            if (detection.id == id) {
-                return detection;
-            }
-        }
-        return null;
+    public RobotPose getLatestEstimatedPose() {
+        return this.estimatedPose;
     }
 
     public static final Webcam INSTANCE = new Webcam();

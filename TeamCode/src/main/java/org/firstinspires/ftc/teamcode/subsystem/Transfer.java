@@ -11,6 +11,7 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
+import org.firstinspires.ftc.teamcode.utils.AutoStorage;
 
 import dev.nextftc.core.subsystems.Subsystem;
 import dev.nextftc.ftc.ActiveOpMode;
@@ -23,10 +24,10 @@ import com.pedropathing.ivy.Command;
 public class Transfer implements Subsystem {
     public static final Transfer INSTANCE = new Transfer();
     public static double detectDist = 80;
-    public static double maxMotorSpeed = 0.7;
+    public static double maxMotorSpeed = 0.5;
 
     // TODO: CHANGE THIS for flywheel
-    public static double maxOverrideSpeed = 0.9;
+    public static double maxOverrideSpeed = 1.0;
     public static double readDelay = 0;
     public static double blockerDelayMs = 350;
 
@@ -36,11 +37,11 @@ public class Transfer implements Subsystem {
 
     // --- Ball Anti-Jam/Reverse Tuning Variables ---
     public static double ballDetectionThresholdMs = 3000; // 3 seconds
-    public static double reverseDurationMs = 300;          // 150ms
-    public static double reverseSpeed = -0.5;              // Speed when backing up
+    public static double reverseDurationMs = 0;          // 150ms
+    public static double reverseSpeed = 0;              // Speed when backing up
     public static double maxOverrideReverseSpeed = -1.0;   // Speed for manual force push backwards
 
-    public static double blocker_block_pos = 0.5;
+    public static double blocker_block_pos = 0.4;
 
     private Transfer() {}
 
@@ -125,7 +126,7 @@ public class Transfer implements Subsystem {
 
         blockerServo.getServo().setDirection(Servo.Direction.FORWARD);
         PwmControl blockerServoPWM = (PwmControl) blockerServo.getServo();
-        blockerServoPWM.setPwmRange(new PwmControl.PwmRange(1250, 1800, 10000));
+        blockerServoPWM.setPwmRange(new PwmControl.PwmRange(1250, 1900, 10000));
         blockerOpenTimer.reset();
         pulseTimer.reset();
         ballDetectionTimer.reset();
@@ -146,6 +147,7 @@ public class Transfer implements Subsystem {
 
     @Override
     public void periodic() {
+        if (!AutoStorage.opModeStarted) return;
         if (state == State.AUTO) {
             if (colorGetTimer.milliseconds() > readDelay) {
                 lastDistance = colorSensorV3.getDistance(DistanceUnit.MM);

@@ -1,5 +1,6 @@
 package org.firstinspires.ftc.teamcode.utils;
 
+import static com.pedropathing.ivy.commands.Commands.waitMs;
 import static com.pedropathing.ivy.groups.Groups.parallel;
 import static com.pedropathing.ivy.groups.Groups.sequential;
 
@@ -23,7 +24,10 @@ public class CGHelpers {
 
     public static Command getStartGroup() {
         return sequential(
+                waitMs(250),
                 Shooter.INSTANCE.spinUp,
+                Turret.INSTANCE.disableTurret,
+                waitMs(250),
                 Turret.INSTANCE.enableTurret,
                 Transfer.INSTANCE.offOverrideOff
         );
