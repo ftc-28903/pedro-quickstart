@@ -27,7 +27,7 @@ public class AutoRoutines {
 
     public static Command getShootStopGroup() {
         return parallel(
-                Intake.INSTANCE.spinDown,
+                //Intake.INSTANCE.spinDown,
                 Transfer.INSTANCE.overrideOff
         );
     }
@@ -109,6 +109,11 @@ public class AutoRoutines {
 
                 // Shoot 2: Curve back to shooting position
                 follow(follower, TrajectoryFactory.INSTANCE.intakeLine2Shoot),
+                getShootCommand(),
+                Intake.INSTANCE.spinUp,
+
+                follow(follower, TrajectoryFactory.INSTANCE.shoot2IntakeLine3),
+                follow(follower, TrajectoryFactory.INSTANCE.intakeLine3Shoot2),
                 getShootCommand(),
                 Intake.INSTANCE.spinUp,
 

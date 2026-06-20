@@ -14,14 +14,14 @@ public class TrajectoryFactory {
     Pose farStartPose = new Pose(55.3, 8.5, Math.toRadians(180));
     Pose farParkPose = new Pose(41, 20);
     Pose shootPose1 = new Pose(50.000, 83.000);
-    Pose intakeLine1Pose = new Pose(14.0000, 83.000);
-    Pose intakeLine2Pose = new Pose(4.000, 63.000);
+    Pose intakeLine1Pose = new Pose(14.0000, 75.000);
+    Pose intakeLine2Pose = new Pose(4.000, 60.000);
     Pose shootPose2 = new Pose(62.000, 76.000);
-    Pose gateOpenIntakePose = new Pose(8.2, 59.5);
+    Pose gateOpenIntakePose = new Pose(8.2, 60);
     Pose intakeLine3Pose = new Pose(4.0, 35.0);
     Pose farShootPose = new Pose(60, 20);
 
-    Pose intakeLine3CurvePose = new Pose(62, 40);
+    Pose intakeLine3CurvePose = new Pose(62, 30);
 
     // PathChains (Will hold either Normal or Mirrored paths based on selection)
     public PathChain startFarIntakeLine3;
@@ -36,6 +36,8 @@ public class TrajectoryFactory {
     public PathChain shoot2GateOpenIntake;
     public PathChain gateOpenIntakeShoot2;
     public PathChain startShoot2;
+    public PathChain shoot2IntakeLine3;
+    public PathChain intakeLine3Shoot2;
 
     public void buildTrajectories(Follower follower) {
         // Path 1: Curve to shootPose1
@@ -50,8 +52,9 @@ public class TrajectoryFactory {
 
         // Path 2: Line to intakeLine1Pose
         shootIntakeLine1 = follower.pathBuilder().addPath(
-                        new BezierLine(
+                        new BezierCurve(
                                 shootPose1,
+                                new Pose(30,84),
                                 intakeLine1Pose
                         )
                 ).setConstantHeadingInterpolation(Math.toRadians(180))
@@ -138,6 +141,23 @@ public class TrajectoryFactory {
                                 intakeLine3Pose
                         )
                 ).setConstantHeadingInterpolation(Math.toRadians(180))
+                .build();
+
+        shoot2IntakeLine3 = follower.pathBuilder().addPath(
+                new BezierCurve(
+                        shootPose2,
+                        intakeLine3CurvePose,
+                        intakeLine3Pose
+                )
+        ).setConstantHeadingInterpolation(Math.toRadians(180))
+                .build();
+
+        intakeLine3Shoot2 = follower.pathBuilder().addPath(
+                new BezierLine(
+                        intakeLine3Pose,
+                        shootPose2
+                )
+        ).setConstantHeadingInterpolation(180)
                 .build();
 
         farShootFarPark = follower.pathBuilder().addPath(
